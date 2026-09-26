@@ -62,8 +62,8 @@ Issue: `issue-12`
 **Check rationale**
 
 Check: `newcomer-scope`
-> Quoted check: `The task is a self-contained, bounded change (such as a documentation update, a localized bug fix, or an issue with identified causes or clear repro steps) rather than an umbrella issue, an ongoing tracking list, or an open-ended feature wish with an unmade product decision`
-- Reasoning: The earlier draft failed any task that was not strictly a single atomic change, which produced false rejections on multi-step bounded bugs like `issue-04`. We revised it to focus on whether the scope is self-contained and bounded, explicitly distinguishing valid single units of work from real anti-patterns (umbrella tracking lists, repository-wide overhauls, and unmade product decisions).
+> Quoted check: `The task is not an umbrella tracking issue, an open-ended design discussion or feature wish, or a repository-wide refactor`
+- Reasoning: The earlier draft failed any task that was not strictly a single atomic change, which produced false rejections on multi-step bounded bugs like `issue-04`. We revised it to focus on what to explicitly exclude (umbrella tracking lists, open-ended design discussions, and repository-wide refactors), allowing well-diagnosed bounded bugs to pass while still rejecting true mega-issues.
 
 **Trade-offs**
 
