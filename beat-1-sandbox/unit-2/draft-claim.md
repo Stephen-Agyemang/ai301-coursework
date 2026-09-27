@@ -1,0 +1,1 @@
+I'm investigating this issue and reproducing the test failure on the README scorer fixture. I will follow up shortly with a detailed reproduction report containing the environment details, exact commands, and pytest output.
