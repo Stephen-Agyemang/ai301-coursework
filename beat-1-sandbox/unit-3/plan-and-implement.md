@@ -126,7 +126,7 @@ Explanation: The package proposed a diagnosis and approach that misidentified th
 
 **Check rationale**
 
-> "diagnosis-grounded: Does the diagnosis identify the root cause supported by the reproduction evidence, without misattributing the failure or ignoring key failure signals?"
+"The diagnosis identifies a root cause consistent with all reproduction evidence and controls; it does not blame a component or mechanism that control steps or debug output already ruled out"
 
 This check reads this way because early test iterations revealed that plans addressing only the immediate line of an AssertionError often failed to account for tightly coupled secondary assertions (such as word_count_category == "comprehensive" requiring >= 500 words). The check was refined to require that the diagnosis account for all observed failure signals and thresholds rather than settling for a partial surface-level explanation.
 

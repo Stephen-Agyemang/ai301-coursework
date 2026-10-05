@@ -1,0 +1,13 @@
+# Ignore macOS metadata
+.DS_Store
+
+# Ignore Python virtual environments
+venv/
+env/
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore pytest cache
+.pytest_cache/
