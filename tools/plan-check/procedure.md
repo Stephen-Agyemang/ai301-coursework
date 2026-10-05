@@ -1,26 +1,5 @@
 # Procedure: how this skill grades a plan package
 
-<!--
-THIS IS THE PART YOU WRITE, and it is a new kind of part. Weeks 1 and
-2, SKILL.md carried a numbered workflow and you only wrote judgment
-files. This week the workflow is gone from the frame: SKILL.md says
-"execute procedure.md", and these are the operating steps you author.
-The machinery is in your hands now.
-
-Your operator swap is the design brief. When your executor stalled
-because your rubric said WHAT to decide but not HOW to find the
-evidence, that was a procedure gap. This file is where those gaps get
-closed: a complete procedure lets someone who has never seen a plan
-package before (a groupmate, or the skill itself) grade one exactly the
-way you would.
-
-Under each stage heading below, write the concrete steps for that
-stage. The one-line note under each heading says what a complete
-procedure must decide there. Write steps, not intentions: "read the
-repro evidence before the plan, and note what behavior it pins down"
-is a step; "understand the context" is a wish.
--->
-
 ## Read order
 
 1. **Read Repo Conventions & Thread Highlights first**: Note any explicit maintainer instructions, open PRs, or repository policies (especially AI disclosure rules). This establishes the constraints of the room.

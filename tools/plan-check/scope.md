@@ -1,17 +1,5 @@
 # Scope: where your issue lives, and the rules of the room
 
-<!--
-This file is the skill's field of view, live mode only: in eval mode
-the bundle is the whole world and this file is ignored. The rubric
-(rubric.md) decides whether a plan package is READY; the scope decides
-which issues a package may belong to at all, and what the house rules
-are where that issue lives.
-
-Staff wrote this file. One line is yours: the `Repo:` line below,
-which you fill in with your Path Review repo. Leave the rest as it
-ships.
--->
-
 ## Where your issue lives
 
 Only issues in the course's Path Review repository are in scope this
