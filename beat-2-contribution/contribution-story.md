@@ -56,7 +56,7 @@ one in the week it belongs to.
 
 **Unit 5: Upgraded issue-select to issue-scout with CLI search strategy and GitHub-wide scope**
 
-Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During the initial scan, ranking by fewest comments with a recency tie-break surfaced zero-comment repositories created the same day with no community adoption, causing two candidate rejections on the repo-in-use check, while a substring filter on "ui" unintentionally dropped issues labeled "enquiry". Grading manually claimed portal picks further revealed that high-profile repositories attract duplicate open PRs, reinforcing the need for comment-count and claim-conflict ranking thresholds.
+I upgraded issue-select to issue-scout by adding search-strategy.md and real-world GitHub scope constraints. During initial scans, ranking by fewest comments tied on recency, which pulled zero-comment repositories created the same day that failed the repo-in-use check. Furthermore, substring matching on the "ui" label accidentally dropped issues labeled "enquiry". To fix this, I updated search-strategy.md to require exact label matching, capped comment count at three to drop contested issues, and added an explicit label flag to the Java query.
 
 
 **Unit 6: [one line on the tool work]**
