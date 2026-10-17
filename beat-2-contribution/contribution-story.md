@@ -8,9 +8,8 @@ format criteria grade exactly that. Your course repo link is the whole submissio
 files and no evidence uploads are part of Assignment 5.
 
 **Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
+**Student:** Stephen Agyemang
+**GitHub Username:** Stephen-Agyemang
 **Issue:** [GitHub issue link]
 **Pull Request:** [GitHub PR link, once opened]
 
@@ -55,10 +54,10 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Upgraded issue-select to issue-scout with CLI search strategy and GitHub-wide scope**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During the initial scan, ranking by fewest comments with a recency tie-break surfaced zero-comment repositories created the same day with no community adoption, causing two candidate rejections on the repo-in-use check, while a substring filter on "ui" unintentionally dropped issues labeled "enquiry". Grading manually claimed portal picks further revealed that high-profile repositories attract duplicate open PRs, reinforcing the need for comment-count and claim-conflict ranking thresholds.
+
 
 **Unit 6: [one line on the tool work]**
 
