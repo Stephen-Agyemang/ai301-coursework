@@ -56,7 +56,7 @@ one in the week it belongs to.
 
 **Unit 5: Upgraded issue-select to issue-scout with CLI search strategy and GitHub-wide scope**
 
-I upgraded issue-select to issue-scout by adding search-strategy.md and real-world GitHub scope constraints. During initial scans, ranking by fewest comments tied on recency, which pulled zero-comment repositories created the same day that failed the repo-in-use check. Furthermore, substring matching on the "ui" label accidentally dropped issues labeled "enquiry". To fix this, I updated search-strategy.md to require exact label matching, capped comment count at three to drop contested issues, and added an explicit label flag to the Java query.
+Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During the initial scan, ranking by fewest comments with a recency tie-break surfaced zero-comment repositories created the same day with no community adoption (failing repo-in-use), while a substring filter on "ui" dropped issues labeled "enquiry". I patched the label filter to enforce exact matching and verified the fix by re-evaluating the label set against the query outputs, confirming "enquiry" issues were preserved while pure UI labels were excluded. To prevent the duplicate-PR rejections seen in the apache/airflow picks—where every issue with 3 or more comments already had active pull requests—I documented a 3-comment cutoff rule specifically to catch issues before multi-contributor race conditions form.
 
 
 **Unit 6: [one line on the tool work]**
