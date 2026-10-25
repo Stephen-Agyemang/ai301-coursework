@@ -1,4 +1,4 @@
-# Contribution: [Issue Title]
+# Contribution: Migrate bt_home_hub_5 from DeviceScanner to ScannerEntity
 
 Path: `beat-2-contribution/contribution-story.md`
 
@@ -10,7 +10,7 @@ files and no evidence uploads are part of Assignment 5.
 **Contribution Number:** [1]
 **Student:** Stephen Agyemang
 **GitHub Username:** Stephen-Agyemang
-**Issue:** [GitHub issue link]
+**Issue:** https://github.com/home-assistant/core/issues/143022
 **Pull Request:** [GitHub PR link, once opened]
 
 One repository, built across units 5 to 8, telling the whole story of your real
@@ -59,11 +59,10 @@ one in the week it belongs to.
 Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During the initial scan, ranking by fewest comments with a recency tie-break surfaced zero-comment repositories created the same day with no community adoption (failing repo-in-use), while a substring filter on "ui" dropped issues labeled "enquiry". I patched the label filter to enforce exact matching and verified the fix by re-evaluating the label set against the query outputs, confirming "enquiry" issues were preserved while pure UI labels were excluded. To prevent the duplicate-PR rejections seen in the apache/airflow picks—where every issue with 3 or more comments already had active pull requests—I documented a 3-comment cutoff rule specifically to catch issues before multi-contributor race conditions form.
 
 
-**Unit 6: [one line on the tool work]**
+**Unit 6: Installed voice-guard hook and configured repository memory for home-assistant**
 
-[2-4 sentences: the voice-guard, the repo-memory file. What broke or
-fell short, and what changed because of it. "Nothing broke" counts when
-it is true - say how you know.]
+Integrated a PreToolUse voice-guard hook into settings.json to enforce concrete claims and prevent unvalidated comment submissions. During the wiring check, the hook successfully intercepted a body-less issue comment command, verifying the guard's gatekeeper behavior. In core, I configured CLAUDE.local.md with targeted pytest commands for the bt_home_hub_5 component and added it to .git/info/exclude to ensure local tooling configuration remains completely detached from upstream commits.
+
 
 **Unit 7: [one line on the tool work]**
 
@@ -79,24 +78,18 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs in your own words: how you searched, what your scan
-surfaced, what your scout's verdict said, why this issue fits your
-profile, and what you hope to learn. If your scout's verdict on it
-was reject and you chose it anyway, say so here and say why; choosing
-against your own tool silently is what loses points. Close with an
-honest read of the tool itself: where the scout fell short on a real
-wild search and what you changed or would change, or what convinced
-you it held up. **Record the link to your claim comment in this section too.**
-Not claimed yet? Write `claim pending` and today's date where the link goes,
-and add the link the moment your claim lands.]
+I began by searching the portal for Python backend issues, initially focusing on high-profile repositories like `apache/airflow`[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span). When running `issue-scout` over those picks (#72265, #60172, and #66173), the tool rejected all three[span_3](start_span)[span_3](end_span)[span_4](start_span)[span_4](end_span): one issue had 8 competing pull requests open simultaneously[span_5](start_span)[span_5](end_span), while the other two had accumulated five closed, unmerged PRs each, signaling severe claimant contention and hidden architectural traps[span_6](start_span)[span_6](end_span). Shifting focus to `home-assistant/core`, I graded three sibling device-tracker migration tasks under epic #50326 (#143022, #143039, and #143040). While the scout rejected the latter two due to stale and rejected PR history under `settled-spec`, it accepted #143022 with an `ambitious` difficulty note. The issue was completely unworked—no assignees, no linked PRs, and zero comments besides the initial docs bot[span_7](start_span)[span_7](end_span). 
+
+This issue aligns directly with my Python backend profile and interest in modular device integrations[span_8](start_span)[span_8](end_span). Although the issue description was only two lines[span_9](start_span)[span_9](end_span), grading the three sibling issues together provided crucial insight: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its inaugural unit test suite with `pytest`. The scout proved its value by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright[span_10](start_span)[span_10](end_span).
+
+**Claim Comment:** https://github.com/home-assistant/core/issues/143022#issuecomment-3444983086
 
 **Toolkit**
 
-- Tool: issue-scout (your scout: your search strategy, your rubric),
-  and how you used it
-- What it produced: [the scan and its verdict on this issue, described]
-- Difficulties: [where it fell short, or "none met" if none did]
-- What changed: [what you patched or would update, or "nothing"]
+- Tool: issue-scout (search strategy, patched rubric with `scope-feasible` check and difficulty notes).
+- What it produced: An `accept` verdict on `home-assistant/core#143022` with an `ambitious` difficulty note, and `reject` verdicts on sibling issues #143039 and #143040 due to closed unmerged PRs under `settled-spec`.
+- Difficulties: Two-line task descriptions caused the preferred `actionable-description` check to fail, and the true requirement (config flow refactoring) was invisible in the issue body, existing only in sibling PR review discussions.
+- What changed: Upgraded the scope check from `newcomer-scope` to `scope-feasible` to flag open design edges as difficulty notes rather than failing valid issues[span_11](start_span)[span_11](end_span), and graded sibling issues concurrently to extract maintainer architectural expectations.
 
 ---
 
@@ -104,26 +97,30 @@ and add the link the moment your claim lands.]
 
 **Problem Description**
 
-[In your own words, what is broken or missing?]
+The `bt_home_hub_5` integration in Home Assistant currently uses the deprecated legacy `DeviceScanner` interface to track devices connected to BT Home Hub 5 routers[span_12](start_span)[span_12](end_span). As part of the core architectural cleanup tracked under parent epic #50326, all legacy router scanners must migrate to the modern `ScannerEntity` model[span_13](start_span)[span_13](end_span). However, `ScannerEntity` cannot be instantiated from legacy YAML configuration platforms; it requires the integration to be managed through Home Assistant's config entries architecture.
 
 **Expected Behavior**
 
-[What should happen?]
+The integration should set up devices via a config flow (`config_flow.py`) where router connection parameters are validated and stored as a config entry. The device tracker platform should then register entities inheriting from `ScannerEntity` instead of implementing `DeviceScanner`[span_14](start_span)[span_14](end_span), with comprehensive unit test coverage verifying config entry creation and entity updates.
 
 **Current Behavior**
 
-[What actually happens?]
+`homeassistant/components/bt_home_hub_5/device_tracker.py` still inherits from `DeviceScanner` and relies on legacy setup methods (`setup_scanner`). The integration lacks a `config_flow.py`, has no config entry handlers in `__init__.py`, and currently contains zero unit tests in `tests/components/bt_home_hub_5/`.
 
 **Affected Components**
 
-[Which parts of the codebase are involved?]
+- `homeassistant/components/bt_home_hub_5/device_tracker.py`: Houses the current `DeviceScanner` implementation.
+- `homeassistant/components/bt_home_hub_5/manifest.json`: Requires integration schema updates and config flow flags.
+- `homeassistant/components/bt_home_hub_5/config_flow.py`: New file required to support config entries.
+- `homeassistant/components/bt_home_hub_5/__init__.py`: Component entry point required to forward setup to platforms.
+- `tests/components/bt_home_hub_5/`: New test directory required for `test_config_flow.py` and `test_device_tracker.py` using mocked `bthomehub5-devicelist` responses.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code inspection and GitHub issue/PR cross-referencing.
+- What it produced: Concrete architectural mapping of required files (`config_flow.py`, `device_tracker.py`, tests) and identified the absence of existing test coverage in `tests/components/bt_home_hub_5/`.
+- Difficulties: The issue body gave no technical pointers; the dependency on `bthomehub5-devicelist` required checking upstream source to understand hardware expectations.
+- What changed: Framed the implementation around a mocked router client in `pytest` rather than attempting physical hardware reproduction.
 
 ---
 
