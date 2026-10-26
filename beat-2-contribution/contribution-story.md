@@ -78,9 +78,9 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-I began by searching the portal for Python backend issues, initially focusing on high-profile repositories like `apache/airflow`[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span). When running `issue-scout` over those picks (#72265, #60172, and #66173), the tool rejected all three[span_3](start_span)[span_3](end_span)[span_4](start_span)[span_4](end_span): one issue had 8 competing pull requests open simultaneously[span_5](start_span)[span_5](end_span), while the other two had accumulated five closed, unmerged PRs each, signaling severe claimant contention and hidden architectural traps[span_6](start_span)[span_6](end_span). Shifting focus to `home-assistant/core`, I graded three sibling device-tracker migration tasks under epic #50326 (#143022, #143039, and #143040). While the scout rejected the latter two due to stale and rejected PR history under `settled-spec`, it accepted #143022 with an `ambitious` difficulty note. The issue was completely unworked—no assignees, no linked PRs, and zero comments besides the initial docs bot[span_7](start_span)[span_7](end_span). 
+I began by searching the portal for Python backend issues, initially focusing on high-profile repositories like `apache/airflow`. When running `issue-scout` over those picks (#72265, #60172, and #66173), the tool rejected all three: one issue had 8 competing pull requests open simultaneously, while the other two had accumulated five closed, unmerged PRs each, signaling severe claimant contention and hidden architectural traps. Shifting focus to `home-assistant/core`, I graded three sibling device-tracker migration tasks under epic #50326 (#143022, #143039, and #143040). While the scout rejected the latter two due to stale and rejected PR history under `settled-spec`, it accepted #143022 with an `ambitious` difficulty note. The issue was completely unworked—no assignees, no linked PRs, and zero comments besides the initial docs bot.
 
-This issue aligns directly with my Python backend profile and interest in modular device integrations[span_8](start_span)[span_8](end_span). Although the issue description was only two lines[span_9](start_span)[span_9](end_span), grading the three sibling issues together provided crucial insight: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its inaugural unit test suite with `pytest`. The scout proved its value by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright[span_10](start_span)[span_10](end_span).
+This issue aligns directly with my Python backend profile and interest in modular device integrations. Although the issue description was only two lines, grading the three sibling issues together provided crucial insight: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its inaugural unit test suite with `pytest`. The scout proved its value by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright.
 
 **Claim Comment:** https://github.com/home-assistant/core/issues/143022#issuecomment-3444983086
 
@@ -89,7 +89,7 @@ This issue aligns directly with my Python backend profile and interest in modula
 - Tool: issue-scout (search strategy, patched rubric with `scope-feasible` check and difficulty notes).
 - What it produced: An `accept` verdict on `home-assistant/core#143022` with an `ambitious` difficulty note, and `reject` verdicts on sibling issues #143039 and #143040 due to closed unmerged PRs under `settled-spec`.
 - Difficulties: Two-line task descriptions caused the preferred `actionable-description` check to fail, and the true requirement (config flow refactoring) was invisible in the issue body, existing only in sibling PR review discussions.
-- What changed: Upgraded the scope check from `newcomer-scope` to `scope-feasible` to flag open design edges as difficulty notes rather than failing valid issues[span_11](start_span)[span_11](end_span), and graded sibling issues concurrently to extract maintainer architectural expectations.
+- What changed: Upgraded the scope check from `newcomer-scope` to `scope-feasible` to flag open design edges as difficulty notes rather than failing valid issues, and graded sibling issues concurrently to extract maintainer architectural expectations.
 
 ---
 
@@ -97,11 +97,11 @@ This issue aligns directly with my Python backend profile and interest in modula
 
 **Problem Description**
 
-The `bt_home_hub_5` integration in Home Assistant currently uses the deprecated legacy `DeviceScanner` interface to track devices connected to BT Home Hub 5 routers[span_12](start_span)[span_12](end_span). As part of the core architectural cleanup tracked under parent epic #50326, all legacy router scanners must migrate to the modern `ScannerEntity` model[span_13](start_span)[span_13](end_span). However, `ScannerEntity` cannot be instantiated from legacy YAML configuration platforms; it requires the integration to be managed through Home Assistant's config entries architecture.
+The `bt_home_hub_5` integration in Home Assistant currently uses the deprecated legacy `DeviceScanner` interface to track devices connected to BT Home Hub 5 routers. As part of the core architectural cleanup tracked under parent epic #50326, all legacy router scanners must migrate to the modern `ScannerEntity` model. However, `ScannerEntity` cannot be instantiated from legacy YAML configuration platforms; it requires the integration to be managed through Home Assistant's config entries architecture.
 
 **Expected Behavior**
 
-The integration should set up devices via a config flow (`config_flow.py`) where router connection parameters are validated and stored as a config entry. The device tracker platform should then register entities inheriting from `ScannerEntity` instead of implementing `DeviceScanner`[span_14](start_span)[span_14](end_span), with comprehensive unit test coverage verifying config entry creation and entity updates.
+The integration should set up devices via a config flow (`config_flow.py`) where router connection parameters are validated and stored as a config entry. The device tracker platform should then register entities inheriting from `ScannerEntity` instead of implementing `DeviceScanner`, with comprehensive unit test coverage verifying config entry creation and entity updates.
 
 **Current Behavior**
 
@@ -128,31 +128,53 @@ The integration should set up devices via a config flow (`config_flow.py`) where
 
 **Environment Setup**
 
-[What a stranger would need to stand this up: your operating system,
-the relevant versions (language, runtime, package manager, the project
-itself), and how you set the project up. Then the challenges you faced
-and how you solved them, or that none came up.]
+- Operating System: macOS
+- Repository: Cloned fork of `home-assistant/core` checked out on the `dev` branch at commit `61215ee660b`.
+- Inspection Mode: Static inspection of `dev @ 61215ee660b` (`git` and filesystem verification; no runtime needed to confirm the legacy class hierarchy and missing test suite).
+- Challenges: Upstream `pyproject.toml` on `dev` recently bumped `requires-python` to `>=3.14.2`, which caused my initial `repro-check` run to fail when I listed a generic `Python 3.12 / 3.13` environment without a commit SHA. Recording the exact upstream commit (`61215ee660b`) and specifying static inspection resolved the environment mismatch.
 
 **Steps to Reproduce**
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+1. Inspect the legacy device tracker implementation in `homeassistant/components/bt_home_hub_5/`:
+   ```bash
+   git grep "DeviceScanner" homeassistant/components/bt_home_hub_5/
+   ```
+2. Verify the presence of configuration flow and modern entity architecture files:
+   ```bash
+   ls -la homeassistant/components/bt_home_hub_5/
+   ```
+3. Check for existing unit test coverage for the integration:
+   ```bash
+   ls -la tests/components/bt_home_hub_5/
+   ```
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** [link to commit in your fork]
-- **Screenshots/logs:** [if applicable]
-- **My findings:** [what you discovered during reproduction; an
-  honest, evidenced cannot-reproduce that led you to re-pick or ask
-  the maintainer belongs here and costs you nothing]
+- **Commit showing reproduction:** `61215ee660b` (https://github.com/home-assistant/core/commit/61215ee660b)
+- **Screenshots/logs:**
+  ```text
+  $ git grep "DeviceScanner" homeassistant/components/bt_home_hub_5/
+  homeassistant/components/bt_home_hub_5/device_tracker.py:    DeviceScanner,
+  homeassistant/components/bt_home_hub_5/device_tracker.py:) -> BTHomeHub5DeviceScanner | None:
+  homeassistant/components/bt_home_hub_5/device_tracker.py:    scanner = BTHomeHub5DeviceScanner(config[DEVICE_TRACKER_DOMAIN])
+  homeassistant/components/bt_home_hub_5/device_tracker.py:class BTHomeHub5DeviceScanner(DeviceScanner):
+
+  $ ls -la homeassistant/components/bt_home_hub_5/
+  __init__.py
+  device_tracker.py
+  manifest.json
+
+  $ ls -la tests/components/bt_home_hub_5/
+  ls: tests/components/bt_home_hub_5/: No such file or directory
+  ```
+- **My findings:** Static verification at commit `61215ee660b` confirms three facts: `BTHomeHub5DeviceScanner` directly subclasses the deprecated `DeviceScanner` on line 37 of `device_tracker.py`, the component directory contains only three files (`__init__.py`, `device_tracker.py`, `manifest.json`) with no `config_flow.py`, and `tests/components/bt_home_hub_5/` does not exist. The integration currently runs exclusively via the legacy platform path rather than `ScannerEntity`.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `repro-check` skill (upgraded with `scope.md` and `voice-guide.md` to grade `claim-draft.md` and `repro-draft.md` jointly against issue `#143022`).
+- What it produced: An initial `reject` verdict flagging `environment-recorded` and an unsourced design assertion, followed by a clean `accept` verdict across all 6 checks (`names-the-issue`, `promise-not-assertion`, `environment-recorded`, `steps-rerunnable`, `observed-matches-issue`, `repo-conventions`) after revision.
+- Difficulties: My first draft listed `Python: 3.12 / 3.13` with no commit SHA or OS, which `repro-check` rejected because upstream `dev` now requires Python `>=3.14.2`. It also flagged my closing sentence ("requires both a modern config flow and test suite") as an unsourced design conclusion rather than direct command output.
+- What changed: Replaced the generic Python version string with `Static inspection of dev @ 61215ee660b; no runtime needed` on `macOS`, and narrowed the closing finding to state only what the command output directly proves ("currently runs via the legacy platform path rather than `ScannerEntity`").
 
 ---
 
