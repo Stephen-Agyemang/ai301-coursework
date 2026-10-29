@@ -2,67 +2,27 @@
 
 Path: `beat-2-contribution/contribution-story.md`
 
-This file is Assignment 5, and it is graded at the path above; a copy kept anywhere else in
-the repository is not read. **Keep every section header below under its exact name** — the
-format criteria grade exactly that. Your course repo link is the whole submission: no tool
-files and no evidence uploads are part of Assignment 5.
-
-**Contribution Number:** [1]
+**Contribution Number:** 1
 **Student:** Stephen Agyemang
 **GitHub Username:** Stephen-Agyemang
 **Issue:** https://github.com/home-assistant/core/issues/143022
 **Pull Request:** [GitHub PR link, once opened]
 
-One repository, built across units 5 to 8, telling the whole story of your real
-contribution. Fill it as you work, not at the end — the sections below ask for evidence that
-is far easier to write down as it happens than to reconstruct in the last weekend.
-
-Contribution Number stays `[1]` unless you make more than one contribution this term; it
-just numbers them.
-
 ---
 
 ## Toolkit
 
-Every story section below, from Why I Chose This Issue through Pull
-Request, ends with a Toolkit block: which tool did that phase's work
-and how you used it, what it produced, what difficulties or
-shortcomings it presented, and what you changed or would change
-because of them. Together the blocks are the thread the rubric's
-Toolkit points read, and they are the raw material for your unit-9
-portfolio, so keep them current as you work rather than
-reconstructing them later.
-
-A Toolkit block looks like this (copy it into each story section and
-fill it there):
-
-```text
-**Toolkit**
-
-- Tool: [which tool did this phase's work, and how you used it]
-- What it produced: [described in a sentence or a short excerpt]
-- Difficulties: [what fought you or fell short, or "none met"]
-- What changed: [the patch, revision, or workaround, what you would
-  update, or "nothing"]
-```
-
-This section also keeps one short dated entry per week of tool work,
-starting below: what you built or changed that week, what broke, and
-what you changed because of it. The blocks tell the story where it
-happened; these entries are the toolkit's own timeline.
-
-All four entries are graded. Keep every heading below, and fill each
-one in the week it belongs to.
+This section tracks the weekly development of my agent toolkit across units 5 through 8, documenting what was built, what broke during real evaluation runs, and what changed as a result.
 
 **Unit 5: Upgraded issue-select to issue-scout with CLI search strategy and GitHub-wide scope**
 
-Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During the initial scan, ranking by fewest comments with a recency tie-break surfaced zero-comment repositories created the same day with no community adoption (failing repo-in-use), while a substring filter on "ui" dropped issues labeled "enquiry". I patched the label filter to enforce exact matching and verified the fix by re-evaluating the label set against the query outputs, confirming "enquiry" issues were preserved while pure UI labels were excluded. To prevent the duplicate-PR rejections seen in the apache/airflow picks—where every issue with 3 or more comments already had active pull requests—I documented a 3-comment cutoff rule specifically to catch issues before multi-contributor race conditions form.
+Built an automated issue discovery workflow by upgrading issue-select into issue-scout, linking gh search queries directly to my Python and Java backend profile sentences in scope.md. During initial scans, ranking by fewest comments surfaced zero-comment repositories created the same day with no community adoption (failing repo-in-use). In addition, a naive substring filter on "ui" inadvertently dropped issues labeled "enquiry". 
 
+To fix the filter, I patched it to enforce exact label matching, verifying that "enquiry" issues were preserved while pure UI labels were excluded. Furthermore, evaluation across `apache/airflow` candidates revealed that every issue with 3 or more comments already had active competing pull requests. I instituted a strict 3-comment cutoff rule in the scout rubric to detect candidate contention before multi-contributor race conditions form.
 
 **Unit 6: Installed voice-guard hook and configured repository memory for home-assistant**
 
 Integrated a PreToolUse voice-guard hook into settings.json to enforce concrete claims and prevent unvalidated comment submissions. During the wiring check, the hook successfully intercepted a body-less issue comment command, verifying the guard's gatekeeper behavior. In core, I configured CLAUDE.local.md with targeted pytest commands for the bt_home_hub_5 component and added it to .git/info/exclude to ensure local tooling configuration remains completely detached from upstream commits.
-
 
 **Unit 7: [one line on the tool work]**
 
@@ -141,11 +101,11 @@ The integration should set up devices via a config flow (`config_flow.py`) where
    ```
 2. Verify the presence of configuration flow and modern entity architecture files:
    ```bash
-   ls -la homeassistant/components/bt_home_hub_5/
+   ls homeassistant/components/bt_home_hub_5/
    ```
 3. Check for existing unit test coverage for the integration:
    ```bash
-   ls -la tests/components/bt_home_hub_5/
+   ls tests/components/bt_home_hub_5/
    ```
 
 **Reproduction Evidence**
@@ -159,12 +119,10 @@ The integration should set up devices via a config flow (`config_flow.py`) where
   homeassistant/components/bt_home_hub_5/device_tracker.py:    scanner = BTHomeHub5DeviceScanner(config[DEVICE_TRACKER_DOMAIN])
   homeassistant/components/bt_home_hub_5/device_tracker.py:class BTHomeHub5DeviceScanner(DeviceScanner):
 
-  $ ls -la homeassistant/components/bt_home_hub_5/
-  __init__.py
-  device_tracker.py
-  manifest.json
+  $ ls homeassistant/components/bt_home_hub_5/
+  __init__.py		device_tracker.py	manifest.json
 
-  $ ls -la tests/components/bt_home_hub_5/
+  $ ls tests/components/bt_home_hub_5/
   ls: tests/components/bt_home_hub_5/: No such file or directory
   ```
 - **My findings:** Static verification at commit `61215ee660b` confirms three facts: `BTHomeHub5DeviceScanner` directly subclasses the deprecated `DeviceScanner` on line 37 of `device_tracker.py`, the component directory contains only three files (`__init__.py`, `device_tracker.py`, `manifest.json`) with no `config_flow.py`, and `tests/components/bt_home_hub_5/` does not exist. The integration currently runs exclusively via the legacy platform path rather than `ScannerEntity`.
