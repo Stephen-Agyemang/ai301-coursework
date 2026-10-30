@@ -140,29 +140,57 @@ The integration should set up devices via a config flow (`config_flow.py`) where
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+The `bt_home_hub_5` integration instantiates `BTHomeHub5DeviceScanner(DeviceScanner)` on line 32 via legacy YAML platform setup (`get_scanner`). In accordance with core epic #50326, legacy router device trackers must migrate to `ScannerEntity`. Because `ScannerEntity` requires config entry management, the integration must introduce a configuration flow and coordinator while providing a backwards-compatible YAML import path.
+
+According to `homeassistant/components/device_tracker/legacy.py:297-301`, legacy YAML platforms must define one of `async_get_scanner`, `get_scanner`, `async_setup_scanner`, or `setup_scanner`. Removing `get_scanner` without providing an import hook causes `legacy.py` to raise `"Invalid legacy device_tracker platform"` and silently drops existing YAML configurations. 
+
+Following the precedent established in `homeassistant/components/sky_hub/device_tracker.py:31-68` and PR #187258:
+- The integration retains `PLATFORM_SCHEMA` in `device_tracker.py` and replaces `get_scanner` with `async_setup_scanner(hass, config, see, discovery_info=None) -> bool`.
+- It initiates import via `hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_IMPORT}, data={CONF_HOST: config[CONF_HOST]})`.
+- If the import flow aborts (with `cannot_connect` or `unknown`), it registers an ERROR-severity issue `yaml_import_cannot_connect` under `DOMAIN` with placeholder `{"host": config[CONF_HOST]}`.
+- If the import succeeds, it deletes any prior `yaml_import_cannot_connect` issue for that host and registers a WARNING-severity `deprecated_yaml_{DOMAIN}` issue under `HOMEASSISTANT_DOMAIN` with placeholders `{"domain": DOMAIN, "integration_title": "BT Home Hub 5"}`.
+- In all cases, it returns `True` to satisfy `legacy.py`.
+
+Because Home Assistant policy strictly forbids using mutable hostnames or IP addresses as unique IDs ("Never: an IP address, a device name, a URL, or a hostname"), config entries do not set a unique ID. Instead, duplicate entries are prevented via `self._async_abort_entries_match({CONF_HOST: host})` in both user and import steps, matching `sky_hub`.
+
+Because the underlying library is synchronous and can return `None`, raise `RequestException`, or raise `IndexError` on non-Hub payloads, network calls must run via the executor and handle both connection and unexpected payload errors cleanly.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Migrate `bt_home_hub_5` from `DeviceScanner` to `ScannerEntity` backed by config entries, following the `sky_hub` architecture:
+1. **Config Flow & Duplicate Prevention**: Implement `ConfigFlow` in `config_flow.py` handling `async_step_user` and `async_step_import`. Prevent duplicate configurations using `self._async_abort_entries_match({CONF_HOST: host})` without setting an IP-based unique ID. Add `strings.json` defining schema labels, abort keys (`already_configured`, `cannot_connect`, `unknown`), and the `yaml_import_cannot_connect` issue string.
+2. **Legacy YAML Import Hook (`async_setup_scanner`)**: In `device_tracker.py`, keep `PLATFORM_SCHEMA` and implement `async_setup_scanner` passing `data={CONF_HOST: config[CONF_HOST]}` to `SOURCE_IMPORT`. On abort (`cannot_connect` or `unknown`), create `yaml_import_cannot_connect` via `ir.async_create_issue`. On success, clear any previous `yaml_import_cannot_connect` issue and create `deprecated_yaml_{DOMAIN}` under `HOMEASSISTANT_DOMAIN` with `translation_placeholders={"domain": DOMAIN, "integration_title": "BT Home Hub 5"}`. Return `True`.
+3. **Connection Validation & Async Executor**: Validate the host by calling `get_devicelist` wrapped in `hass.async_add_executor_job`.
+   - If `get_devicelist` returns `None` or raises `requests.exceptions.RequestException`, return/abort `cannot_connect`.
+   - If `get_devicelist` raises `IndexError` or any other unexpected `Exception`, log via `_LOGGER.exception` and return/abort `unknown`.
+4. **DataUpdateCoordinator**: Introduce a `DataUpdateCoordinator` in `coordinator.py` (or `__init__.py`) polling `get_devicelist` via the executor at `SCAN_INTERVAL`. If `get_devicelist` returns `None`, raises `RequestException`, or encounters an unexpected exception, raise `UpdateFailed`. On `UpdateFailed`, `CoordinatorEntity.available` returns `False`, setting entity states to `STATE_UNAVAILABLE`.
+5. **ScannerEntity & Entity Unique IDs**: In `device_tracker.py`, implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)`. Set `_attr_unique_id = f"{entry.entry_id}_{mac}"` and `_attr_has_entity_name = True`. Register a coordinator listener that dynamically calls `async_add_entities` whenever previously unseen client MAC addresses appear in the coordinator's dictionary. An entity's `is_connected` property returns `True` if its MAC address is in `coordinator.data`, and `False` when absent. Under `entity.py:707-715`, newly tracked entities default to disabled unless another integration has already registered a device with that MAC in the device registry.
+6. **Manifest & Component Metadata**: Update `manifest.json` with `"config_flow": true`, `"integration_type": "hub"`, and remove `"quality_scale": "legacy"`.
+
+Deliberately NOT changing:
+- The third-party `bthomehub5-devicelist` library dependency.
+- Device tracking parsing semantics ({mac: name}).
+- Excluding the optional `legacy_known_devices` repair issue check to keep the migration scoped strictly to epic #50326.
+- No unrequested code owners or feature scope added.
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
-
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+1. **Translations & UI Schema (`strings.json`)**: Define data schema labels for `CONF_HOST`, abort and error message keys (`already_configured`, `cannot_connect`, `unknown`), and the `yaml_import_cannot_connect` repair issue string. Core's shared `deprecated_yaml` string is reused under `HOMEASSISTANT_DOMAIN`.
+2. **Config Flow (`config_flow.py`)**: Implement `async_step_user` prompting for `CONF_HOST` (defaulting to `"192.168.1.254"`). Check `self._async_abort_entries_match({CONF_HOST: host})` to reject duplicates with `already_configured`. Validate connectivity using `await self.hass.async_add_executor_job(get_devicelist, host)`. If `devicelist is None` or `requests.exceptions.RequestException` is caught, return `errors={"base": "cannot_connect"}`. Catch `IndexError` and unexpected `Exception`, log with `_LOGGER.exception`, and return `errors={"base": "unknown"}`. On success, call `self.async_create_entry(title=f"BT Home Hub 5 ({host})", data={CONF_HOST: host})`. Implement `async_step_import` with identical duplicate check and connectivity validation, aborting with `cannot_connect` or `unknown` on failure, and calling `async_create_entry` on success.
+3. **Integration Lifecycle & Coordinator (`__init__.py` / `coordinator.py`)**: Implement `DataUpdateCoordinator` polling `get_devicelist` via executor; raise `UpdateFailed` when `get_devicelist` returns `None`, raises `RequestException`, or raises parsing exceptions. Implement `async_setup_entry` to instantiate the coordinator, perform first refresh, assign to `entry.runtime_data`, and forward entry setup to `Platform.DEVICE_TRACKER`. Implement `async_unload_entry` using `await hass.config_entries.async_unload_platforms_or_raise(entry, [Platform.DEVICE_TRACKER])` matching `sky_hub/__init__.py:94`.
+4. **Device Tracker & YAML Import Trigger (`device_tracker.py`)**: Retain `PLATFORM_SCHEMA`. Implement `async_setup_scanner` conforming to `legacy.py:297-301`: call `hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_IMPORT}, data={CONF_HOST: config[CONF_HOST]})`. On import abort (`cannot_connect` or `unknown`), call `ir.async_create_issue(hass, DOMAIN, f"deprecated_yaml_cannot_connect_{config[CONF_HOST]}", is_fixable=False, issue_domain=DOMAIN, severity=ir.IssueSeverity.ERROR, translation_key="yaml_import_cannot_connect", translation_placeholders={"host": config[CONF_HOST]})`. On successful entry creation, call `ir.async_delete_issue(hass, DOMAIN, f"deprecated_yaml_cannot_connect_{config[CONF_HOST]}")` and `ir.async_create_issue(hass, HOMEASSISTANT_DOMAIN, f"deprecated_yaml_{DOMAIN}", is_fixable=False, issue_domain=DOMAIN, severity=ir.IssueSeverity.WARNING, translation_key="deprecated_yaml", translation_placeholders={"domain": DOMAIN, "integration_title": "BT Home Hub 5"})`. Return `True`. Implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)` with `_attr_unique_id = f"{entry.entry_id}_{mac}"` and `_attr_has_entity_name = True`. Add dynamic entity discovery on coordinator updates for newly seen client MAC addresses. Expose `is_connected`, `mac_address`, and `hostname`.
+5. **Manifest (`manifest.json`)**: Set `"config_flow": true`, `"integration_type": "hub"`, and remove `"quality_scale": "legacy"`.
+6. **Test Suite (`tests/components/bt_home_hub_5/`)**:
+   - `test_config_flow.py`: Assert `async_step_user` with reachable host creates entry; assert duplicate host aborts with `already_configured`; assert `None` returns and `RequestException` surface `cannot_connect`; assert `IndexError` surfaces `unknown`; assert `async_step_import` with valid host creates entry, unreachable host aborts `cannot_connect`, duplicate host aborts `already_configured`.
+   - `test_device_tracker.py`: Assert legacy YAML setup via `async_setup_scanner` creates entry and records `deprecated_yaml` in issue registry; assert unreachable host creates `yaml_import_cannot_connect`; using `@pytest.mark.usefixtures("entity_registry_enabled_by_default")`, assert `BTHomeHub5ScannerEntity` initializes `STATE_HOME`, transitions to `STATE_NOT_HOME` when MAC is absent, and transitions to `STATE_UNAVAILABLE` on coordinator `UpdateFailed`.
+7. **Repo Verification**: Run unit tests via `pytest tests/components/bt_home_hub_5/` and linting via `uv run --no-sync prek run --all-files`.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `plan-check` skill (evaluating `plan.md` and `plan-comment.md` against issue #143022 and `sky_hub` PR #187258).
+- What it produced: An `accept` verdict validating the complete migration architecture, error routing, repair issue handling, and test fixtures.
+- Difficulties: Initial drafts failed on invalid assumptions regarding IP unique IDs (forbidden by HA core rules), missing synchronous executor wrapping, unhandled library `IndexError` exceptions on non-Hub pages, and incomplete YAML migration triggers.
+- What changed: Aligned the design with `homeassistant/components/sky_hub`, added executor jobs for synchronous calls, prevented duplicates via `_async_abort_entries_match`, implemented `async_setup_scanner` with issue registry cleanup, and incorporated `@pytest.mark.usefixtures("entity_registry_enabled_by_default")` for decisive tests.
 
 ---
 
@@ -249,10 +277,8 @@ Toolkit blocks above are full of them.]
 
 ## Resources Used
 
-[What actually helped, not a reading list. List things this story
-already shows you using: the doc you followed to set the environment
-up, the thread that explained the bug, the person who answered you.
-One real entry beats ten plausible ones.]
+- [Home Assistant Contributor Documentation: Config Flow](https://contributors.home-assistant.io/docs/config_entries_config_flow_handler/)
+- [Home Assistant Contributor Documentation: Entity Standards](https://contributors.home-assistant.io/docs/core/entity/)
+- [Sky Hub ScannerEntity Migration PR #187258](https://github.com/home-assistant/core/pull/187258)
+- [Home Assistant Core Epic #50326](https://github.com/home-assistant/core/issues/50326)
 
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
