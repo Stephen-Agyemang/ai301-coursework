@@ -41,7 +41,7 @@ I began by searching the portal for Python backend issues, initially focusing on
 
 This issue aligns directly with my Python backend profile and interest in modular device integrations. Although the issue description was only two lines, grading the three sibling issues together provided crucial insight: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its inaugural unit test suite with `pytest`. The scout proved its value by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright.
 
-**Claim Comment:** https://github.com/home-assistant/core/issues/143022#issuecomment-3444983086
+**Claim Comment:** https://github.com/home-assistant/core/issues/143022#issuecomment-6404966273
 
 **Toolkit**
 
@@ -163,7 +163,7 @@ Migrate `bt_home_hub_5` from `DeviceScanner` to `ScannerEntity` backed by config
    - If `get_devicelist` returns `None` or raises `requests.exceptions.RequestException`, return/abort `cannot_connect`.
    - If `get_devicelist` raises `IndexError` or any other unexpected `Exception`, log via `_LOGGER.exception` and return/abort `unknown`.
 4. **DataUpdateCoordinator**: Introduce a `DataUpdateCoordinator` in `coordinator.py` polling `get_devicelist` via the executor at `SCAN_INTERVAL`. If `get_devicelist` returns `None`, raises `RequestException`, or encounters an unexpected exception, raise `UpdateFailed`. On `UpdateFailed`, `CoordinatorEntity.available` returns `False`, setting entity states to `STATE_UNAVAILABLE`.
-5. **ScannerEntity & Entity Unique IDs**: In `device_tracker.py`, implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)`. Set `_attr_unique_id = mac` and `_attr_has_entity_name = True`. Register a coordinator listener that dynamically calls `async_add_entities` whenever previously unseen client MAC addresses appear in the coordinator's dictionary. An entity's `is_connected` property returns `True` if its MAC address is in `coordinator.data`, and `False` when absent. Provide `device_info` linking to network MAC connections.
+5. **ScannerEntity & Entity Unique IDs**: In `device_tracker.py`, implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)`. Set `_attr_unique_id = f"{entry.entry_id}_{mac}"` and `_attr_has_entity_name = True`. Register a coordinator listener that dynamically calls `async_add_entities` whenever previously unseen client MAC addresses appear in the coordinator's dictionary. An entity's `is_connected` property returns `True` if its MAC address is in `coordinator.data`, and `False` when absent. Provide `device_info` linking to network MAC connections.
 6. **Manifest & Component Metadata**: Update `manifest.json` with `"config_flow": true`, `"integration_type": "hub"`, and categories.
 
 Deliberately NOT changing:
@@ -177,7 +177,7 @@ Deliberately NOT changing:
 1. **Translations & UI Schema (`strings.json`)**: Define data schema labels for `CONF_HOST`, abort and error message keys (`already_configured`, `cannot_connect`, `unknown`), and the `yaml_import_cannot_connect` repair issue string. Core's shared `deprecated_yaml` string is reused under `HOMEASSISTANT_DOMAIN`.
 2. **Config Flow (`config_flow.py`)**: Implement `async_step_user` prompting for `CONF_HOST` (defaulting to `"192.168.1.254"`). Check `self._async_abort_entries_match({CONF_HOST: host})` to reject duplicates with `already_configured`. Validate connectivity using `await self.hass.async_add_executor_job(get_devicelist, host)`. If `devicelist is None` or `requests.exceptions.RequestException` is caught, return `errors={"base": "cannot_connect"}`. Catch `IndexError` and unexpected `Exception` (`# noqa: BLE001`), log with `_LOGGER.exception`, and return `errors={"base": "unknown"}`. On success, call `self.async_create_entry(title=f"BT Home Hub 5 ({host})", data={CONF_HOST: host})`. Implement `async_step_import` with identical duplicate check and connectivity validation, aborting with `cannot_connect` or `unknown` on failure, and calling `async_create_entry` on success.
 3. **Integration Lifecycle & Coordinator (`__init__.py` / `coordinator.py`)**: Implement `DataUpdateCoordinator` polling `get_devicelist` via executor; raise `UpdateFailed` when `get_devicelist` returns `None`, raises `RequestException`, or raises parsing exceptions. Implement `async_setup_entry` to instantiate the coordinator, perform first refresh, assign to `entry.runtime_data`, and forward entry setup to `Platform.DEVICE_TRACKER`. Implement `async_unload_entry` using `await hass.config_entries.async_unload_platforms(entry, [Platform.DEVICE_TRACKER])`.
-4. **Device Tracker & YAML Import Trigger (`device_tracker.py`)**: Retain `PLATFORM_SCHEMA`. Implement `async_setup_scanner` conforming to `legacy.py:297-301`: call `hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_IMPORT}, data={CONF_HOST: config[CONF_HOST]})`. On import abort (`cannot_connect` or `unknown`), call `ir.async_create_issue(...)`. On successful entry creation, call `ir.async_create_issue` for `deprecated_yaml` under `HOMEASSISTANT_DOMAIN`. Return `True`. Implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)` with `_attr_unique_id = mac`, `_attr_has_entity_name = True`, and `device_info` mapping network MAC connections. Add dynamic entity discovery on coordinator updates for newly seen client MAC addresses. Expose `is_connected`, `mac_address`, and `hostname`.
+4. **Device Tracker & YAML Import Trigger (`device_tracker.py`)**: Retain `PLATFORM_SCHEMA`. Implement `async_setup_scanner` conforming to `legacy.py:297-301`: call `hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_IMPORT}, data={CONF_HOST: config[CONF_HOST]})`. On import abort (`cannot_connect` or `unknown`), call `ir.async_create_issue(...)`. On successful entry creation, call `ir.async_create_issue` for `deprecated_yaml` under `HOMEASSISTANT_DOMAIN`. Return `True`. Implement `BTHomeHub5ScannerEntity(ScannerEntity, CoordinatorEntity)` with `_attr_unique_id = f"{entry.entry_id}_{mac}"`, `_attr_has_entity_name = True`, and `device_info` mapping network MAC connections. Add dynamic entity discovery on coordinator updates for newly seen client MAC addresses. Expose `is_connected`, `mac_address`, and `hostname`.
 5. **Manifest (`manifest.json`)**: Set `"config_flow": true`, `"integration_type": "hub"`, and categories `["presence_location.network_presence", "computers_network.routers_network"]`.
 6. **Test Suite (`tests/components/bt_home_hub_5/`)**:
    - `test_config_flow.py`: Assert `async_step_user` with reachable host creates entry; assert duplicate host aborts with `already_configured`; assert `None` returns and `RequestException` surface `cannot_connect`; assert `IndexError` surfaces `unknown`; assert `async_step_import` with valid host creates entry, unreachable host aborts `cannot_connect`, duplicate host aborts `already_configured`.
@@ -214,41 +214,75 @@ __init__.py            test_config_flow.py    test_device_tracker.py
 ```
 
 ### 2. Comprehensive Unit Test & Coverage Execution
-Executed the test suite with branch coverage enforcement:
+Executed the test suite with branch coverage on 2026-11-03, after rebuilding the virtual environment with `script/setup` (CPython 3.14.10, macOS arm64). Output copied from the terminal:
 ```text
-$ .venv/bin/pytest tests/components/bt_home_hub_5/ --cov=homeassistant.components.bt_home_hub_5 --cov-branch --cov-report=term-missing
+$ uv run --no-sync pytest tests/components/bt_home_hub_5 --cov=homeassistant.components.bt_home_hub_5 --cov-branch --cov-report=term-missing
 
-collected 15 items
+Test session starts (platform: darwin, Python 3.14.10, pytest 9.0.3, pytest-sugar 1.1.1)
+collected 20 items
 
-tests/components/bt_home_hub_5/test_config_flow.py ✓✓✓✓✓✓✓✓✓                       [ 60%]
-tests/components/bt_home_hub_5/test_device_tracker.py ✓✓✓✓✓✓                      [100%]
+ tests/components/bt_home_hub_5/test_config_flow.py ✓✓✓✓✓✓✓✓✓                 45% ████▌
+ tests/components/bt_home_hub_5/test_device_tracker.py ✓✓✓✓✓✓✓✓✓✓✓           100% ██████████
 
-======================================== tests coverage =========================================
 Name                                                       Stmts   Miss Branch BrPart  Cover   Missing
 ------------------------------------------------------------------------------------------------------
 homeassistant/components/bt_home_hub_5/__init__.py            10      0      0      0   100%
-homeassistant/components/bt_home_hub_5/config_flow.py         39      0      4      0   100%
+homeassistant/components/bt_home_hub_5/config_flow.py         43      0      4      0   100%
 homeassistant/components/bt_home_hub_5/const.py                6      0      0      0   100%
 homeassistant/components/bt_home_hub_5/coordinator.py         26      0      2      0   100%
-homeassistant/components/bt_home_hub_5/device_tracker.py      50      0      6      2    96%   67->66, 72->exit
-----------------------------------------------------------------------------------------
-TOTAL                                                        131      0     12      2    99%
+homeassistant/components/bt_home_hub_5/device_tracker.py      61      0      8      0   100%
+------------------------------------------------------------------------------------------------------
+TOTAL                                                        146      0     14      0   100%
 
-Results (0.85s):
-      15 passed
+Results (0.77s):
+      20 passed
 ```
+
+Earlier runs on 2026-10-30 and 2026-11-01 reported 15 tests and 99% coverage (two partial branches in `device_tracker.py`). The tests and fixes added since then, recorded in Implementation Notes, brought it to the 20 tests and 100% shown above.
 
 ### 3. Static Analysis and Linting
 ```text
-$ .venv/bin/python3 -m ruff format homeassistant/components/bt_home_hub_5/ tests/components/bt_home_hub_5/
-$ .venv/bin/python3 -m ruff check homeassistant/components/bt_home_hub_5/ tests/components/bt_home_hub_5/
-All checks passed!
+$ python3 -m script.hassfest
+...
+Integrations: 1563
+Invalid integrations: 0
+
+$ git diff upstream/dev -- homeassistant/generated/integrations.json
+@@ -1482,7 +1482,7 @@
+         "presence_location.network_presence",
+         "computers_network.routers_network"
+       ],
+-      "config_flow": false,
++      "config_flow": true,
+       "iot_class": "local_polling"
+     },
+
+$ uv run --no-sync prek run --all-files
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+codespell................................................................Passed
+...
+mypy.....................................................................Failed
+  homeassistant/util/hass_dict.pyi: error: Duplicate module named "homeassistant.util.hass_dict" (also at "homeassistant/util/hass_dict.py")
+pylint...................................................................Failed
+  tests/test_loader.py:137:4: E0611: No name 'test_package' in module 'custom_components' (no-name-in-module)
+...
+hassfest.................................................................Passed
+```
+
+The mypy and pylint failures are in files this branch does not touch (`git diff --name-only upstream/dev...HEAD` lists none of them). They appear because `--all-files` passes every file in the repo to each tool at once. Running both tools on only the changed files, which is what the hooks do on a normal commit:
+```text
+$ git diff --name-only upstream/dev -- '*.py' | grep ^homeassistant | xargs mypy
+Success: no issues found in 6 source files
+
+$ git diff --name-only upstream/dev -- '*.py' | xargs pylint --ignore-missing-annotations=y; echo "exit code: $?"
+exit code: 0
 ```
 
 **Toolkit**
 
 - Tool: `pytest-cov`, `pytest-homeassistant`, and `ruff`.
-- What it produced: 15 passing unit tests spanning config flow, coordinator polling, entity states, and legacy YAML import, achieving 99% test coverage across all five component files.
+- What it produced: 20 passing unit tests spanning config flow, coordinator polling, entity states, two-hub unique IDs, and legacy YAML import, with 100% statement and branch coverage across all five component files (146 statements, 14 branches) as of 2026-11-03.
 - Difficulties: The test teardown fixture `verify_cleanup` blocked unmocked network sockets (`HASocketBlockedError`) when `async_setup_scanner` and user config flows triggered background coordinator setups that invoked `get_devicelist`. Additionally, `check_translations` failed due to missing translation definitions for `issues.deprecated_yaml.title`.
 - What changed: Patched `get_devicelist` across both `config_flow` and `coordinator` during config flow and YAML setup tests, properly structured issue keys in `strings.json`, and generated translation JSON via `script.hassfest`.
 
@@ -265,7 +299,7 @@ All checks passed!
 
 **2026-10-30: Config Flow and Schema Migration**
 - Built `config_flow.py` supporting `async_step_user` and `async_step_import` with host connection validation and duplicate detection via `_async_abort_entries_match`.
-- Initially used `import voluptuous as vol` and `from __future__ import annotations`. Ruff checks flagged that Home Assistant requires Python 3.14+ (where `__future__.annotations` is banned) and mandates `import probatio` for schemas. Refactored schemas to use `probatio.Schema` and `probatio.Required`.
+- Initially used `import voluptuous as vol` and `from __future__ import annotations`. Ruff rejected both because `pyproject.toml` bans them under `[tool.ruff.lint.flake8-tidy-imports.banned-api]`: line 872 says `"voluptuous".msg = "use probatio instead"` and line 879 bans `"__future__.annotations"` because Home Assistant requires Python 3.14+. Refactored schemas to use `probatio.Schema` and `probatio.Required`.
 
 **2026-10-30: Device Tracker Platform & Entity Implementation**
 - Replaced legacy `DeviceScanner` in `device_tracker.py` with `BTHomeHub5ScannerEntity(CoordinatorEntity, ScannerEntity)`.
@@ -276,20 +310,60 @@ All checks passed!
 - Authored `tests/components/bt_home_hub_5/test_config_flow.py` and `tests/components/bt_home_hub_5/test_device_tracker.py`.
 - Encountered `HASocketBlockedError` during teardown of `test_async_setup_scanner_legacy` because the background import flow triggered an unmocked coordinator fetch. Added multi-patch context managers to intercept both config flow and coordinator network calls.
 - Resolved missing translation failures by adding `deprecated_yaml` under the `issues` object in `strings.json` and running `script.translations develop`.
-- Formatted all files with `ruff format` and verified clean lint checks with `ruff check`. Confirmed 100% test coverage across all statements.
+- Formatted all files with `ruff format` and verified clean lint checks with `ruff check`. Statement coverage was 100%, but branch coverage was 99% because two branches in `device_tracker.py` were only partly covered.
 
-**2026-11-01: Upstream CI Hardening, Device Registry Standards, and Final PR Green-lights**
-- Resolved upstream CI failures in `hassfest`, `mypy`, `pylint`, and `prek` checks.
+**2026-11-01: Upstream CI Fixes and Device Registry Standards**
+- Worked through upstream CI failures. As of 2026-11-03, `gh pr checks 189792 -R home-assistant/core` on the last pushed commit shows `Check mypy`, `Check pylint`, `Check pylint on tests`, and `Run prek checks` passing, but `Check hassfest` and `Run tests Python 3.14.10 (bt_home_hub_5)` still failing (19 pass, 2 fail, 16 skipping).
 - Added mandatory `device_info` with `CONNECTION_NETWORK_MAC` on `BTHomeHub5ScannerEntity` to satisfy Home Assistant core registry standards.
-- Sorted `strings.json` keys alphabetically and regenerated `homeassistant/generated/config_flows.py` and `homeassistant/generated/integrations.json` via `hassfest`.
-- Verified all 15 unit tests pass successfully with 99% test coverage.
+- Sorted `strings.json` keys alphabetically and regenerated `homeassistant/generated/config_flows.py` and `homeassistant/generated/integrations.json`. The committed `integrations.json` did not match what a full `hassfest` run generates, which is one reason `Check hassfest` kept failing. That file was fixed on 2026-11-03.
+- Verified all 15 unit tests pass with 100% statement coverage and 99% branch coverage.
+
+**2026-11-01: Removal Version, Device Naming, and YAML Default Host Regression**
+- Moved `breaks_in_ha_version` from `2026.12.0` to `2027.6.0` after confirming that the contributor docs require at least six months of deprecation for YAML configuration.
+- Set `name=name` in `DeviceInfo`, `_attr_name = None`, and `_attr_hostname = name` so entities resolve to `device_tracker.phone` instead of `device_tracker.bt_home_hub_5_192_168_1_254_phone`, and removed the custom `hostname` property.
+- Traced a regression caused by dropping `PLATFORM_SCHEMA`: YAML with no `host` lost the `192.168.1.254` default, failed with `KeyError: 'host'`, and created no config entry. My `pr-precheck` had flagged the possible loss of the default host as a caveat before the PR opened.
+- Restored `PLATFORM_SCHEMA` with `DEFAULT_HOST`, matching `sky_hub`, and added `test_yaml_setup_uses_default_host`, which failed before the fix (`1 failed, 15 passed`) and passed after it (`16 passed`, 100% statement and branch coverage).
+
+**2026-11-01: Failed YAML Import Reporting**
+- Traced a second regression from my deviation to a single unconditional `deprecated_yaml` issue: when the router could not be reached, no config entry was created, but the repair notice still said the configuration had been imported automatically.
+- Returned to the `sky_hub` design from my plan: `async_setup_scanner` now awaits the import flow, raises an ERROR-severity `yaml_import_cannot_connect_{host}` issue when the flow aborts with `cannot_connect` or `unknown`, and otherwise clears that issue and raises `deprecated_yaml_bt_home_hub_5` under `HOMEASSISTANT_DOMAIN`.
+- Replaced the custom `deprecated_yaml` string in `strings.json` with `yaml_import_cannot_connect`, reused core's shared `deprecated_yaml` string, and regenerated `translations/en.json` with `script.translations develop`.
+- Added `test_yaml_import_failure_creates_issue`, parametrized for `cannot_connect` and `unknown`, and updated `test_async_setup_scanner_legacy`. Before the fix, `3 failed, 15 passed`; after it, `18 passed` with 100% statement and branch coverage.
+
+**2026-11-01: Blank Device Name Fallback**
+- Confirmed that a blank router name made `DeviceInfo` fall back to the config entry title, producing `device_tracker.bt_home_hub_5_192_168_1_254` instead of an ID for that device. I did not confirm whether `bthomehub5-devicelist` can return a blank name, so this change is defensive.
+- Changed `BTHomeHub5ScannerEntity` to use `name or mac` for the device name and `name or None` for the hostname, matching `sky_hub`.
+- Added `test_device_without_name_falls_back_to_mac`. Before the fix, `1 failed, 18 passed`; after it, `19 passed` with 100% statement and branch coverage.
+
+**2026-11-03: Entity Unique IDs Per Hub**
+- Dropped my deviation from the planned `{entry_id}_{mac}` unique ID. With `mac` alone, two configured hubs that saw the same device clashed: the second hub's entity was ignored and logged `Platform bt_home_hub_5 does not generate unique IDs. ID 00:11:22:33:44:55 already exists - ignoring device_tracker.phone`.
+- Setting `_attr_unique_id = f"{coordinator.config_entry.entry_id}_{mac}"` alone did not fix it, because `ScannerEntity.unique_id` in `homeassistant/components/device_tracker/entity.py:574-576` returns `self.mac_address` and ignores `_attr_unique_id`. Added a `unique_id` property override that returns `_attr_unique_id`, matching `sky_hub`.
+- Added `test_same_device_on_two_hubs`. Before the fix, `1 failed, 19 passed`; after it, `20 passed` with 100% statement and branch coverage.
+
+**2026-11-03: Logging Unexpected Config Flow Errors**
+- Found that both `async_step_user` and `async_step_import` caught unexpected exceptions with `except Exception:  # noqa: BLE001` and returned `unknown` without logging anything, even though my plan said to log them with `_LOGGER.exception`. I had not listed this as a deviation. The user-facing consequence was an "Unexpected error" message with nothing in the Home Assistant log to explain it.
+- Added `_LOGGER.exception("Unexpected exception")` to both handlers and removed the `noqa`. This is the common pattern in other config flows (`git grep -h -A1 "except Exception:$" -- 'homeassistant/components/*/config_flow.py' | grep -c '_LOGGER.exception("Unexpected exception")'` returned `327`). Ruff's `BLE001` rule does not flag a blind `except` that logs with `.exception`.
+- Updated `test_user_flow_unknown_exception` and `test_import_flow_unknown_error` to assert the log message with `caplog`. Before the fix, `2 failed, 18 passed`; after it, `20 passed` with 100% statement and branch coverage. `uvx ruff@0.17.3 check` printed `All checks passed!` and `format --check` printed `8 files already formatted`, because the project venv's ruff is 0.17.1 and refuses to run.
+
+**2026-11-03: Local Toolchain Rebuild and Regenerated Files**
+- My local tools did not match CI: the venv ran Python 3.14.7 instead of the required 3.14.10, ruff 0.17.1 refused to run against the required `>=0.17.3`, and `python3 -m script.hassfest` failed with `No module named 'hassfest'`. Upgraded `uv`, deleted `.venv`, and reran `script/setup`.
+- The first `script/setup` failed to build `dtlssocket==0.1.19` (pulled in by `pytradfri[async]`, not my integration) with `sh: autoconf: command not found`. Installed it with `brew install autoconf` and reran setup.
+- Ran the full `python3 -m script.hassfest`: `Integrations: 1563`, `Invalid integrations: 0`. `git diff upstream/dev -- homeassistant/generated/integrations.json` now shows only `"config_flow": false` changing to `true` for `bt_home_hub_5`.
+- `uv run --no-sync prek run --all-files` passed every hook except `mypy` and `pylint`, which failed on files this branch does not touch. Running them on only my changed files passed (details in Testing Strategy).
+
+**2026-11-03: Push, Merge Conflict, and Green CI**
+- Committed the 2026-11-01 to 2026-11-03 fixes as `dfc7f96` ("Fix YAML import, entity IDs, and error logging in bt_home_hub_5") and pushed.
+- GitHub then reported conflicts in `homeassistant/components/bt_home_hub_5/manifest.json` and `homeassistant/generated/integrations.json`. Upstream #189910 had added `"connectivity": ["network"]` to my manifest, next to the lines I changed. 328 upstream commits from 86 contributors had landed since my last sync on 2026-11-01.
+- Before touching my branch, I tested the resolution in a separate worktree. Then I ran `git merge upstream/dev` (merge, not rebase, because the repo's `CLAUDE.md` forbids rewriting pushed commits), kept both `"config_flow": true` and `"connectivity": ["network"]` in the manifest, took upstream's `integrations.json` with `git checkout --theirs`, and regenerated it with `python3 -m script.hassfest`. `git diff upstream/dev -- homeassistant/generated/integrations.json` again showed only `"config_flow": false` changing to `true`.
+- After the merge, pytest crashed with `ModuleNotFoundError: No module named 'pytest_homeassistant.bootstrap'`. Upstream #190049 had renamed `packages/pytest-home-assistant` to `packages/pytest-homeassistant`, and my venv's editable install still pointed at the old folder. The import name did not change, so my tests needed no edits. Rerunning `script/bootstrap` fixed the venv, and the tests passed (`20 passed`).
+- Committed the merge as `a26f753` and pushed. `gh pr checks 189792 -R home-assistant/core --watch` reported `All checks were successful` with `0 cancelled, 0 failing, 22 successful, 15 skipped, and 0 pending checks`, including `CI/Check hassfest` and `CI/Run tests Python 3.14.10 (bt_home_hub_5)`.
 
 **Toolkit**
 
 - Tool: `ruff`, `hassfest`, and Home Assistant test runner.
-- What it produced: Clean, PEP-compliant, idiomatic code satisfying Home Assistant Python 3.14 standards and passing all upstream CI checks.
-- Difficulties: Environment mismatches with `uv` attempting to fetch Python interpreter versions and strict JSON key ordering in `strings.json`.
-- What changed: Executed development and validation scripts directly through `.venv/bin/python3` and aligned file schemas to exact core specs.
+- What it produced: Code that passes `ruff`, `mypy`, `pylint`, and `prek` in upstream CI. Locally, a full `hassfest` run and the tests pass on Python 3.14.10. Before the 2026-11-03 push, upstream `Check hassfest` and the `bt_home_hub_5` test job failed. The test job failed on `test_device_tracker_entities` (`assert None is not None` at `test_device_tracker.py:47`, because the expected entity did not exist), which the 2026-11-01 naming fix addresses. After pushing the fixes and merging `upstream/dev`, all 22 upstream checks that ran passed, and 15 were skipped.
+- Difficulties: Environment mismatches with `uv` attempting to fetch Python interpreter versions, strict JSON key ordering in `strings.json`, and an outdated local venv (Python 3.14.7, ruff 0.17.1, no `hassfest` module) that hid problems CI caught.
+- What changed: First worked around the venv by calling `.venv/bin/python3` directly. Because a full `hassfest` run could not work in that venv, nothing local caught the stale `integrations.json`. Then rebuilt the venv with `script/setup` so local checks match CI.
 
 ---
 
@@ -307,22 +381,18 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 - Provide explicit `device_info` mapping network MAC connections to satisfy Home Assistant entity registry standards.
 
 ### Documented Deviations from Initial Plan:
-- **Unique ID format**: Simplified `_attr_unique_id` to `mac`.
-- **YAML Deprecation Handling**: Registered a single unconditional `deprecated_yaml` warning issue in `async_setup_scanner` under `DOMAIN`.
-- **PLATFORM_SCHEMA**: Dropped legacy schema validation in `device_tracker.py` in favor of validation inside `ConfigFlow` using `probatio`.
-- **Platform Unload**: Used `hass.config_entries.async_unload_platforms(entry, PLATFORMS)` matching current core standards.
-- **Hostname Property**: Exposed `hostname` on `BTHomeHub5ScannerEntity` returning `self._attr_name`.
+- **Platform Unload**: Used the shared `PLATFORMS` constant from `const.py` instead of the planned `[Platform.DEVICE_TRACKER]` list. Reason: setup and unload read the same list, so they cannot drift apart. User-facing consequence: none, because `PLATFORMS` contains only `Platform.DEVICE_TRACKER`.
 
 **Maintainer Feedback:**
 
-- [Date]: None yet; PR awaiting review and maintainer assignment.
+- 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer has also left four review comments.
 
-**Status:** Awaiting review
+**Status:** Draft, with upstream CI green as of 2026-11-03 (22 successful, 15 skipped, 0 failing on merge commit `a26f753`). Next: review Copilot's comments, update the PR description, then click "Ready for review".
 
 **Toolkit**
 
 - Tool: `ship-gate` validation hook and upstream GitHub Actions CI.
-- What it produced: Verified branch isolation, formatting, test execution, manifest categories, and passing CI check suites.
+- What it produced: Verified branch isolation, formatting, test execution, and manifest categories. Before the 2026-11-03 fixes, upstream CI showed 19 passed, 16 skipped, and 2 failed (`Check hassfest` and `Run tests Python 3.14.10 (bt_home_hub_5)`). After pushing the fixes and merging `upstream/dev`, it showed 22 successful, 15 skipped, and 0 failing.
 - Difficulties: Ensuring all working files stayed out of git commits and aligning strict core `hassfest` manifest validation rules.
 - What changed: Synchronized manifest categories, sorted translation keys, and added mandatory `device_info`.
 
