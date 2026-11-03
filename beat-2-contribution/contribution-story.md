@@ -385,9 +385,9 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 
 **Maintainer Feedback:**
 
-- 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer has also left four review comments.
+- 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer posted six reviews between 2026-10-31 and 2026-11-03, but each one says "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota," so there is no automated feedback to address.
 
-**Status:** Draft, with upstream CI green as of 2026-11-03 (22 successful, 15 skipped, 0 failing on merge commit `a26f753`). Next: review Copilot's comments, update the PR description, then click "Ready for review".
+**Status:** Draft, with upstream CI green as of 2026-11-03 (22 successful, 15 skipped, 0 failing on merge commit `a26f753`). Next: update the PR description, then click "Ready for review".
 
 **Toolkit**
 
