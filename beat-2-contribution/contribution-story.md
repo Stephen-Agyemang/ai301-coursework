@@ -412,7 +412,8 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 
 **What I'd Do Differently Next Time**
 - Inspect the repository's active development fixtures and translation compilers earlier in the process to anticipate translation key test requirements before debugging teardown failures.
-- Directly invoke virtual environment binaries when working in local clones with pinned Python versions rather than relying on global package wrappers.
+- Before simplifying a step from my validated plan, I will read why the reference implementation does it. Three of my bugs (lost default host, misleading repair notice, clashing entity IDs) came from simplifying something `sky_hub` did for a reason. If I still deviate, write the deviation and what users will experience in the PR's deviation list at that moment, not at the end.
+- Match my local toolchain to CI before the first commit: run `script/setup`, then check the Python version, the ruff version and that `python3 -m script.hassfest` runs. My 3.14.7 venv with ruff 0.17.1 and no `hassfest` let a stale `integrations.json` reach CI.
 
 ---
 
