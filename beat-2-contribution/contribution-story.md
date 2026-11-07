@@ -372,6 +372,7 @@ exit code: 0
 - Forked `home-assistant/home-assistant.io` and branched `bt-home-hub-5-config-flow` from `next`. Rewrote `source/_integrations/bt_home_hub_5.markdown` following the merged `sky_hub` page and the repo's integration template: UI setup with a Host field, Supported functionality, Data updates (polled every 10 seconds), a Troubleshooting entry for "Remove leftover known devices for BT Home Hub 5", and Removing the integration. I checked each claim against my core code. I left out the `sky_hub` page's "disabled by default unless their MAC address matches a device already known" because I could not find that behavior in current core: `ScannerEntity` just sets `_attr_entity_registry_enabled_default = False`.
 - The page's title and `ha_` keys are no longer written by hand. `plugins/integration_metadata.rb` merges them from the core manifest, so the front matter only keeps `description`, `ha_release`, and `ha_domain`.
 - `npx textlint` and `npx remark --quiet --frail` both exited `0` on the page.
+- Opened the docs PR against `next`: https://github.com/home-assistant/home-assistant.io/pull/50303. The bot added the `has-parent` label, linking it to core PR #189792. I added the link to my core PR description and ticked its documentation box.
 
 **Toolkit**
 
@@ -406,7 +407,7 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 
 - 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer posted six reviews between 2026-10-31 and 2026-11-03, but each one says "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota," so there is no automated feedback to address.
 
-**Status:** Draft, with upstream CI green as of 2026-11-03 (22 successful, 15 skipped, 0 failing on merge commit `a26f753`). Next: update the PR description, then click "Ready for review".
+**Status:** Draft, with upstream CI green as of 2026-11-07 (26 successful, 15 skipped, 0 failing on `b43c87b8df5`). Docs PR https://github.com/home-assistant/home-assistant.io/pull/50303 is open against `next`. Next: update the PR description, then click "Ready for review".
 
 **Toolkit**
 
