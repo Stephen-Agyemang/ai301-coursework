@@ -169,7 +169,7 @@ Migrate `bt_home_hub_5` from `DeviceScanner` to `ScannerEntity` backed by config
 Deliberately NOT changing:
 - The third-party `bthomehub5-devicelist` library dependency.
 - Device tracking parsing semantics ({mac: name}).
-- Excluding the optional `legacy_known_devices` repair issue check to keep the migration scoped strictly to epic #50326.
+- Excluding the optional `legacy_known_devices` repair issue check to keep the migration scoped strictly to epic #50326. (Changed on 2026-11-06: I added this repair after all. See "2026-11-06: Pre-Review Comparison Against `sky_hub`" and the documented deviations under Pull Request.)
 - No unrequested code owners or feature scope added.
 
 **Implementation Plan**
@@ -366,6 +366,13 @@ exit code: 0
 - Manual test without hardware: ran `python3 -m homeassistant -c ./config` on my branch. Adding BT Home Hub 5 from the UI showed the host form with `192.168.1.254` pre-filled, and submitting it showed "Failed to connect" after the library logged `Connection to the router timed out` (`connect timeout=5`). Then I added `device_tracker: - platform: bt_home_hub_5` with no `host` to `config/configuration.yaml` and restarted. Settings → Repairs showed "YAML configuration import failed" (Error, by BT Home Hub 5), no "YAML configuration is deprecated" warning, and no config entry was created.
 - Final local results: `29 passed`, 100% statement and branch coverage (171 statements, 18 branches). `ruff check` printed `All checks passed!`, `ruff format --check` printed `9 files already formatted`, `mypy` printed `Success: no issues found in 5 source files`, `pylint` exited `0`, and `python3 -m script.hassfest` printed `Invalid integrations: 0`.
 
+**2026-11-06: Plan Check and Documentation Update**
+- Before opening the docs PR, I checked my plan against what I had built. My plan never mentioned docs, and it explicitly scoped out the `legacy_known_devices` repair that I added earlier the same day. I had explained that change in the entry above, but I had not logged it as a deviation, and the "Deviations" section of `plan.md` still listed four changes I had since undone. I rewrote that section to show the current deviations and the reverted ones separately, and added the missing ones under Pull Request.
+- I decided to keep the repair and add a docs PR instead of stopping at the original scope. The developer checklist says "Documentation is developed for home-assistant.io", my core PR template has a docs checkbox for user-facing setup changes, and the live BT Home Hub 5 page still only explains YAML setup, which this PR deprecates.
+- Forked `home-assistant/home-assistant.io` and branched `bt-home-hub-5-config-flow` from `next`. Rewrote `source/_integrations/bt_home_hub_5.markdown` following the merged `sky_hub` page and the repo's integration template: UI setup with a Host field, Supported functionality, Data updates (polled every 10 seconds), a Troubleshooting entry for "Remove leftover known devices for BT Home Hub 5", and Removing the integration. I checked each claim against my core code. I left out the `sky_hub` page's "disabled by default unless their MAC address matches a device already known" because I could not find that behavior in current core: `ScannerEntity` just sets `_attr_entity_registry_enabled_default = False`.
+- The page's title and `ha_` keys are no longer written by hand. `plugins/integration_metadata.rb` merges them from the core manifest, so the front matter only keeps `description`, `ha_release`, and `ha_domain`.
+- `npx textlint` and `npx remark --quiet --frail` both exited `0` on the page.
+
 **Toolkit**
 
 - Tool: `ruff`, `hassfest`, and Home Assistant test runner.
@@ -390,6 +397,10 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 
 ### Documented Deviations from Initial Plan:
 - **Platform Unload**: Used the shared `PLATFORMS` constant from `const.py` instead of the planned `[Platform.DEVICE_TRACKER]` list. Reason: setup and unload read the same list, so they cannot drift apart. User-facing consequence: none, because `PLATFORMS` contains only `Platform.DEVICE_TRACKER`.
+- **Leftover Known Devices Repair**: Added the `legacy_known_devices` repair issue that my plan had scoped out. Reason: after the migration, old `known_devices.yaml` entries for the same devices conflict with the new entities, and `sky_hub` handles this the same way. User-facing consequence: users with leftover entries see an error repair listing them, instead of trackers that quietly stop updating.
+- **Coordinator Errors**: My plan turned every unexpected exception into `UpdateFailed`. The coordinator now only catches `IndexError` and leaves other errors to `DataUpdateCoordinator`. Reason: the broad catch hid the traceback. User-facing consequence: none for entity states; the log now shows the full traceback.
+- **Unload**: My plan used `async_unload_platforms`; the code uses `async_unload_platforms_or_raise`. Reason: the old code ignored a `False` return. User-facing consequence: a failed unload is reported as failed instead of successful.
+- **Documentation PR**: My plan did not include a home-assistant.io update. Reason: the developer checklist and the core PR template expect docs for user-facing setup changes, and `sky_hub` shipped one. User-facing consequence: the integration page describes UI setup instead of the YAML setup this PR deprecates.
 
 **Maintainer Feedback:**
 
