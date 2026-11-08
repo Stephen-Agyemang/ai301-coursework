@@ -387,14 +387,26 @@ exit code: 0
 
 **PR Link:** https://github.com/home-assistant/core/pull/189792
 
-**PR Description:**
-Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to modern Home Assistant standards:
-- Introduce config flow (`ConfigFlow`) with user step, host connection validation, duplicate IP/host detection, and error mapping.
-- Add `DataUpdateCoordinator` (`BTHomeHub5DataUpdateCoordinator`) for centralized device polling at `SCAN_INTERVAL` with executor offloading.
-- Refactor `device_tracker` platform to use `ScannerEntity` (`BTHomeHub5ScannerEntity`) tracking connected state via MAC addresses.
-- Provide backwards-compatibility for YAML configurations via `async_setup_scanner`, registering a repair issue in the issue registry (`deprecated_yaml`) and initiating an automatic import flow.
-- Ensure unit tests for config flow, coordinator retries, entity lifecycle, and platform unload.
-- Provide explicit `device_info` mapping network MAC connections to satisfy Home Assistant entity registry standards.
+**Docs PR Link:** https://github.com/home-assistant/home-assistant.io/pull/50303
+
+**PR Description** (the "Proposed change" section as posted on 2026-11-08; the rest of the PR template is filled in on GitHub):
+
+This migrates `bt_home_hub_5` from the legacy `DeviceScanner` to a config entry with `ScannerEntity` entities. I followed the `sky_hub` migration in #187258, since both are router-based device trackers.
+
+What changes:
+- The integration can be set up from the UI. The config flow checks that the router answers before creating an entry, and aborts if that host is already set up.
+- A `DataUpdateCoordinator` polls the router's device list every 10 seconds, running the blocking `get_devicelist` call in the executor.
+- Each device the router reports becomes a `ScannerEntity` with unique ID `{entry_id}_{mac}`, so the same device seen by two hubs doesn't clash. New devices are added without a reload. Like other `ScannerEntity` integrations, these entities are disabled by default.
+
+What existing YAML users see:
+- Their `device_tracker` YAML is imported into a config entry automatically on startup. If `host` is missing, it falls back to `192.168.1.254`, the same default as before.
+- If the import works, they get the standard "YAML configuration is deprecated" repair issue, with removal in 2027.6.0.
+- If the router can't be reached during import (or the import hits an unexpected error), no entry is created and they get a "YAML configuration import failed" repair issue instead, so they aren't told the import worked when it didn't.
+- Leftover `known_devices.yaml` entries can conflict with the new entities. If any tracked entry matches a device the router reports, they get a "Remove leftover known devices" repair issue listing those entries, the same check `sky_hub` uses.
+
+Testing: I don't own a BT Home Hub 5, so this is tested with mocked `get_devicelist` responses only. 29 tests pass with 100% statement and branch coverage for the integration. I also ran it locally with no router on my network: adding it from the UI shows "Failed to connect", and a YAML `device_tracker` entry with no `host` shows the "YAML configuration import failed" repair without creating an entry. If an owner is able to try it on real hardware, that would be very welcome.
+
+I used AI Tools as an assistant while writing and testing this. I reviewed the changes and can explain it thoroughly.
 
 ### Documented Deviations from Initial Plan:
 - **Platform Unload**: Used the shared `PLATFORMS` constant from `const.py` instead of the planned `[Platform.DEVICE_TRACKER]` list. Reason: setup and unload read the same list, so they cannot drift apart. User-facing consequence: none, because `PLATFORMS` contains only `Platform.DEVICE_TRACKER`.
@@ -406,8 +418,9 @@ Migrate `bt_home_hub_5` from legacy `DeviceScanner` configured via YAML to moder
 **Maintainer Feedback:**
 
 - 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer posted six reviews between 2026-10-31 and 2026-11-03, but each one says "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota," so there is no automated feedback to address.
+- 2026-11-08: Still no human maintainer feedback. Before marking the PR ready, I went through every changed files line by line and will be answering review questions, then ticked "Any generated code has been carefully reviewed". I left "The code change is tested and works locally" unticked because I have only tested without a router. Marking the PR ready cleared the CLA bot's old "Changes requested"; the PR now shows "Review required".
 
-**Status:** Draft, with upstream CI green as of 2026-11-07 (26 successful, 15 skipped, 0 failing on `b43c87b8df5`). Docs PR https://github.com/home-assistant/home-assistant.io/pull/50303 is open against `next`. Next: update the PR description, then click "Ready for review".
+**Status:** Ready for review since 2026-11-08 (`ready_for_review` at 08:00 UTC), with upstream CI green (26 successful, 15 skipped, 0 failing on `b43c87b8df5`). Docs PR #50303 is open against `next` with its checks passing. Next: wait for maintainer review on both PRs, answer questions in my own words, and push any requested changes as new commits (no rebasing or force-pushing).
 
 **Toolkit**
 
