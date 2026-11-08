@@ -44,7 +44,7 @@ This issue aligns directly with my Python backend profile and interest in modula
 
 **Toolkit**
 
-- Tool: issue-scout (search strategy, patched rubric with `scope-feasible` check and difficulty notes).
+- Tool: issue-scout. I ran it on three `apache/airflow` picks (all rejected for competing or failed PRs), then graded three sibling Home Assistant issues together; it rejected #143039 and #143040 and accepted #143022 with an `ambitious` difficulty note.
 - What it produced: An `accept` verdict on `home-assistant/core#143022` with an `ambitious` difficulty note, and `reject` verdicts on sibling issues #143039 and #143040 due to closed unmerged PRs under `settled-spec`.
 - Difficulties: Two-line task descriptions caused the preferred `actionable-description` check to fail, and the true requirement (config flow refactoring) was invisible in the issue body, existing only in sibling PR review discussions.
 - What changed: Upgraded the scope check from `newcomer-scope` to `scope-feasible` to flag open design edges as difficulty notes rather than failing valid issues, and graded sibling issues concurrently to extract maintainer architectural expectations.
