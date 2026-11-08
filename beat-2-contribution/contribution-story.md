@@ -22,24 +22,23 @@ To fix the filter, I patched it to enforce exact label matching, verifying that 
 
 **Unit 6: Installed voice-guard hook and configured repository memory for home-assistant**
 
-Integrated a PreToolUse voice-guard hook into settings.json to enforce concrete claims and prevent unvalidated comment submissions. During the wiring check, the hook successfully intercepted a body-less issue comment command, verifying the guard's gatekeeper behavior. In core, I configured CLAUDE.local.md with targeted pytest commands for the bt_home_hub_5 component and added it to .git/info/exclude to ensure local tooling configuration remains completely detached from upstream commits.
+Integrated a PreToolUse voice-guard hook into settings.json to enforce concrete claims and prevent unvalidated comment submissions. During the wiring check, the hook successfully intercepted a body-less issue comment command, verifying the guard's gatekeeper behavior. In core, I configured CLAUDE.local.md with targeted pytest commands for the bt_home_hub_5 component and added it to .git/info/exclude so my local tooling configuration stays out of upstream commits.
 
 **Unit 7: Validated bt_home_hub_5 migration and PR compliance via ship-gate and ship-manifest**
 
-Configured `ship-manifest.md` to run Home Assistant's mandatory local verification checks (pytest with branch coverage, ruff formatting, and ruff linting) directly using `.venv/bin/` paths. During initial runs, `ship-gate` stopped on case-sensitive title formatting in the manifest, unmocked socket calls during test teardown, and discrepancies between `plan.md` and the PR draft. To pass the gate, I patched `coordinator.get_devicelist` across test fixtures to prevent unmocked socket leaks, added explicit assertions for the repair issue registry and `IndexError` handling, and fully documented our architectural deviations in both `plan.md` and `pr_draft.md` while preserving all Home Assistant PR template checklist items verbatim.
+Configured `ship-manifest.md` to run Home Assistant's mandatory local verification checks (pytest with branch coverage, ruff formatting, and ruff linting) directly using `.venv/bin/` paths. During initial runs, `ship-gate` stopped on case-sensitive title formatting in the manifest, unmocked socket calls during test teardown, and discrepancies between `plan.md` and the PR draft. To pass the gate, I patched `coordinator.get_devicelist` across test fixtures to prevent unmocked socket leaks, added explicit assertions for the repair issue registry and `IndexError` handling, and documented my deviations from the plan in both `plan.md` and `pr_draft.md` while preserving all Home Assistant PR template checklist items verbatim.
 
-**Unit 8: [one line on the tool work]**
+**Unit 8: Installed the PR monitor and wrote a playbook from Home Assistant's measured review times**
 
-[2-4 sentences: the PR-monitor and your playbook. What it read, what it
-drafted, what you did with the draft.]
+The PR monitor read PR #189792's checks, review decision, and 10-item thread, and I wrote my playbook from repo data: `CONTRIBUTING.md` states no review wait, and five similar outside-contributor PRs (#187258, #186739, #175799, #181450, #188963) got a first human response in 1 to 7 days, so I set a 10-day first-review threshold (no nudge before 2026-11-18). Its `--state` report labelled my PR FEEDBACK-IN, but all 10 thread items were bots, and the "review" it reacted to was Copilot's "unable to review … insufficient remaining quota" message. Because of that, I added an "only humans count" rule to the playbook, and rewrote it once when my first version contradicted itself about the CLA bot; with that rule, the full run drafted a wait note instead of a reply, and its notes flagged the FEEDBACK-IN label as wrong. I posted nothing and checked the draft's two open questions myself: the CLA is signed (`cla-bot` passing) and the PR is no longer a draft.
 
 ---
 
 ## Why I Chose This Issue
 
-I began by searching the portal for Python backend issues, initially focusing on high-profile repositories like `apache/airflow`. When running `issue-scout` over those picks (#72265, #60172, and #66173), the tool rejected all three: one issue had 8 competing pull requests open simultaneously, while the other two had accumulated five closed, unmerged PRs each, signaling severe claimant contention and hidden architectural traps. Shifting focus to `home-assistant/core`, I graded three sibling device-tracker migration tasks under epic #50326 (#143022, #143039, and #143040). While the scout rejected the latter two due to stale and rejected PR history under `settled-spec`, it accepted #143022 with an `ambitious` difficulty note. The issue was completely unworked—no assignees, no linked PRs, and zero comments besides the initial docs bot.
+I began by searching the portal for Python backend issues, initially focusing on high-profile repositories like `apache/airflow`. When running `issue-scout` over those picks (#72265, #60172, and #66173), the tool rejected all three: one issue had 8 competing pull requests open simultaneously, while the other two had accumulated five closed, unmerged PRs each, which suggested heavy competition and design problems that earlier attempts had run into. Shifting focus to `home-assistant/core`, I graded three sibling device-tracker migration tasks under epic #50326 (#143022, #143039, and #143040). While the scout rejected the latter two due to stale and rejected PR history under `settled-spec`, it accepted #143022 with an `ambitious` difficulty note. The issue was completely unworked—no assignees, no linked PRs, and zero comments besides the initial docs bot.
 
-This issue aligns directly with my Python backend profile and interest in modular device integrations. Although the issue description was only two lines, grading the three sibling issues together provided crucial insight: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its inaugural unit test suite with `pytest`. The scout proved its value by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright.
+This issue aligns directly with my Python backend profile and interest in modular device integrations. Although the issue description was only two lines, grading the three sibling issues together showed me why earlier attempts failed: maintainers had rejected prior attempts on sibling integrations because contributors attempted a naive one-line class swap without introducing config entries. Because `ScannerEntity` strictly requires config entry support, this project gives me the opportunity to build the integration's first configuration flow (`config_flow.py`) and write its first unit tests with `pytest`. The scout helped by steering me away from the crowded race conditions on Airflow, while the `scope-feasible` patch correctly surfaced the open architectural scope as a difficulty note rather than rejecting the issue outright.
 
 **Claim Comment:** https://github.com/home-assistant/core/issues/143022#issuecomment-6404966273
 
@@ -374,6 +373,12 @@ exit code: 0
 - `npx textlint` and `npx remark --quiet --frail` both exited `0` on the page.
 - Opened the docs PR against `next`: https://github.com/home-assistant/home-assistant.io/pull/50303. The bot added the `has-parent` label, linking it to core PR #189792. I added the link to my core PR description and ticked its documentation box.
 
+**2026-11-08: Ready for Review and PR Monitor**
+- Went through every changed file line by line, ticked "Any generated code has been carefully reviewed", and left "The code change is tested and works locally" unticked because I have no router. Marked the PR ready for review at 08:00 UTC. That cleared the CLA bot's old "Changes requested", and the PR now shows "Review required" with 27 checks passing and 15 skipped on `b43c87b8df5`.
+- Installed the Unit 8 PR monitor. `--state` found my PR but labelled it FEEDBACK-IN, even though every one of the 10 thread items came from a bot. The "review" it reacted to was Copilot's quota message.
+- Wrote my playbook from Home Assistant data. `CONTRIBUTING.md` states no review wait. Five similar outside-contributor PRs (#187258, #186739, #175799, #181450, #188963) got their first human response in 1 to 7 days, but #175799 then took 108 days to merge. Set 10 quiet days for a first review (from 2026-11-08) and 14 for a stalled one. Added a rule that only humans count toward quiet days, then fixed it when my first version contradicted itself about the CLA bot.
+- The full run drafted a wait note: nothing to post, next check 2026-11-18. I posted nothing and confirmed its two open questions with `gh`: the `cla-bot` check passes and the PR is no longer a draft.
+
 **Toolkit**
 
 - Tool: `ruff`, `hassfest`, and Home Assistant test runner.
@@ -418,9 +423,9 @@ I used AI Tools as an assistant while writing and testing this. I reviewed the c
 **Maintainer Feedback:**
 
 - 2026-11-03: No human maintainer feedback yet. On 2026-10-31 the `home-assistant` bot marked the PR "Changes requested" because I had not signed the CLA, and moved it to draft. The CLA is now signed (`cla-signed` label, `cla-bot` check passing). Copilot's automated reviewer posted six reviews between 2026-10-31 and 2026-11-03, but each one says "Copilot was unable to review this pull request because the user who requested the review has insufficient remaining quota," so there is no automated feedback to address.
-- 2026-11-08: Still no human maintainer feedback. Before marking the PR ready, I went through every changed files line by line and will be answering review questions, then ticked "Any generated code has been carefully reviewed". I left "The code change is tested and works locally" unticked because I have only tested without a router. Marking the PR ready cleared the CLA bot's old "Changes requested"; the PR now shows "Review required".
+- 2026-11-08: None yet from a human maintainer. Before marking the PR ready, I went through every changed file line by line so I can answer review questions, then ticked "Any generated code has been carefully reviewed". I left "The code change is tested and works locally" unticked because I have only tested without a router. Marking the PR ready cleared the CLA bot's old "Changes requested"; the PR now shows "Review required". The only new thread activity is another Copilot quota message, which needs no reply.
 
-**Status:** Ready for review since 2026-11-08 (`ready_for_review` at 08:00 UTC), with upstream CI green (26 successful, 15 skipped, 0 failing on `b43c87b8df5`). Docs PR #50303 is open against `next` with its checks passing. Next: wait for maintainer review on both PRs, answer questions in my own words, and push any requested changes as new commits (no rebasing or force-pushing).
+**Status:** Awaiting review (waiting on the maintainer). Ready for review since 2026-11-08, with upstream CI green (27 successful, 15 skipped, 0 failing on `b43c87b8df5`). Docs PR #50303 is open against `next` with its checks passing. Next: per my PR-monitor playbook, no nudge before 2026-11-18; answer any review in my own words and push requested changes as new commits (no rebasing or force-pushing).
 
 **Toolkit**
 
@@ -434,8 +439,8 @@ I used AI Tools as an assistant while writing and testing this. I reviewed the c
 ## Learnings and Reflections
 
 **Technical Skills Gained**
-- Deep understanding of Home Assistant core architectural patterns, including the separation of concerns between `ConfigFlow`, `DataUpdateCoordinator`, and `ScannerEntity`.
-- Mastery of Home Assistant's testing ecosystem: configuring `MockConfigEntry`, intercepting coordinator lifecycles, and managing test teardown assertions like `verify_cleanup` and `HASocketBlockedError`.
+- A working understanding of how Home Assistant integrations are structured, including how `ConfigFlow`, `DataUpdateCoordinator`, and `ScannerEntity` split the work.
+- Hands-on experience with Home Assistant's test tools: configuring `MockConfigEntry`, intercepting coordinator lifecycles, and managing test teardown assertions like `verify_cleanup` and `HASocketBlockedError`.
 - Hands-on experience with modern Python 3.14 requirements, including schema definitions with `probatio` and strict enforcement against deprecated typing imports.
 
 **Challenges Overcome**
@@ -456,3 +461,7 @@ I used AI Tools as an assistant while writing and testing this. I reviewed the c
 - [Home Assistant Contributor Documentation: Entity Standards](https://contributors.home-assistant.io/docs/core/entity/)
 - [Sky Hub ScannerEntity Migration PR #187258](https://github.com/home-assistant/core/pull/187258)
 - [Home Assistant Core Epic #50326](https://github.com/home-assistant/core/issues/50326)
+- [Home Assistant Contributor Documentation: Fetching Data](https://contributors.home-assistant.io/core/integrations/fetching-data/) (the `DataUpdateCoordinator` pattern)
+- [Legacy Device Tracker Migration Guide PR #187793](https://github.com/home-assistant/core/pull/187793)
+- [Home Assistant AI Policy](https://contributors.home-assistant.io/start/ai-policy/)
+- [Home Assistant Documentation Style Guide](https://contributors.home-assistant.io/writing/reference/style/) (for the docs PR)
