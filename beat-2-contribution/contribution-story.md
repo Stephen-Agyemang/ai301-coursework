@@ -280,7 +280,7 @@ exit code: 0
 
 **Toolkit**
 
-- Tool: `pytest-cov`, `pytest-homeassistant`, and `ruff`.
+- Tool: `pytest` with `pytest-cov` and Home Assistant's test fixtures, plus `ruff` through `prek`. I ran the `bt_home_hub_5` tests with `--cov-branch --cov-report=term-missing` and used the Missing column to find the untested branches in `device_tracker.py`, then ran `prek run --all-files` (`ruff check`, `ruff format`, `hassfest`) before pushing.
 - What it produced: 20 passing unit tests spanning config flow, coordinator polling, entity states, two-hub unique IDs, and legacy YAML import, with 100% statement and branch coverage across all five component files (146 statements, 14 branches) as of 2026-11-03.
 - Difficulties: The test teardown fixture `verify_cleanup` blocked unmocked network sockets (`HASocketBlockedError`) when `async_setup_scanner` and user config flows triggered background coordinator setups that invoked `get_devicelist`. Additionally, `check_translations` failed due to missing translation definitions for `issues.deprecated_yaml.title`.
 - What changed: Patched `get_devicelist` across both `config_flow` and `coordinator` during config flow and YAML setup tests, properly structured issue keys in `strings.json`, and generated translation JSON via `script.hassfest`.
@@ -381,7 +381,7 @@ exit code: 0
 
 **Toolkit**
 
-- Tool: `ruff`, `hassfest`, and Home Assistant test runner.
+- Tool: `ruff`, `hassfest`, and Home Assistant's test runner. I ran `ruff` and the integration's tests before every commit, and ran `python3 -m script.hassfest` after editing `manifest.json` or `strings.json` to regenerate `integrations.json` and the translations, then checked the result with `git diff upstream/dev`.
 - What it produced: Code that passes `ruff`, `mypy`, `pylint`, and `prek` in upstream CI. Locally, a full `hassfest` run and the tests pass on Python 3.14.10. Before the 2026-11-03 push, upstream `Check hassfest` and the `bt_home_hub_5` test job failed. The test job failed on `test_device_tracker_entities` (`assert None is not None` at `test_device_tracker.py:47`, because the expected entity did not exist), which the 2026-11-01 naming fix addresses. After pushing the fixes and merging `upstream/dev`, all 22 upstream checks that ran passed, and 15 were skipped.
 - Difficulties: Environment mismatches with `uv` attempting to fetch Python interpreter versions, strict JSON key ordering in `strings.json`, and an outdated local venv (Python 3.14.7, ruff 0.17.1, no `hassfest` module) that hid problems CI caught.
 - What changed: First worked around the venv by calling `.venv/bin/python3` directly. Because a full `hassfest` run could not work in that venv, nothing local caught the stale `integrations.json`. Then rebuilt the venv with `script/setup` so local checks match CI.
@@ -429,7 +429,7 @@ I used AI Tools as an assistant while writing and testing this. I reviewed the c
 
 **Toolkit**
 
-- Tool: `ship-gate` validation hook and upstream GitHub Actions CI.
+- Tool: `ship-gate` validation hook and upstream GitHub Actions CI. Before pushing, I let `ship-gate` run the checks in `ship-manifest.md` (pytest with branch coverage, `ruff format`, `ruff check`) and compare `plan.md` with my PR draft; after pushing, I read the CI results on PR #189792 and fixed the failing `Check hassfest` and `bt_home_hub_5` test jobs.
 - What it produced: Verified branch isolation, formatting, test execution, and manifest categories. Before the 2026-11-03 fixes, upstream CI showed 19 passed, 16 skipped, and 2 failed (`Check hassfest` and `Run tests Python 3.14.10 (bt_home_hub_5)`). After pushing the fixes and merging `upstream/dev`, it showed 22 successful, 15 skipped, and 0 failing.
 - Difficulties: Ensuring all working files stayed out of git commits and aligning strict core `hassfest` manifest validation rules.
 - What changed: Synchronized manifest categories, sorted translation keys, and added mandatory `device_info`.
