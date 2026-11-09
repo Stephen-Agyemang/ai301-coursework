@@ -378,6 +378,7 @@ exit code: 0
 - Installed the Unit 8 PR monitor. `--state` found my PR but labelled it FEEDBACK-IN, even though every one of the 10 thread items came from a bot. The "review" it reacted to was Copilot's quota message.
 - Wrote my playbook from Home Assistant data. `CONTRIBUTING.md` states no review wait. Five similar outside-contributor PRs (#187258, #186739, #175799, #181450, #188963) got their first human response in 1 to 7 days, but #175799 then took 108 days to merge. Set 10 quiet days for a first review (from 2026-11-08) and 14 for a stalled one. Added a rule that only humans count toward quiet days, then fixed it when my first version contradicted itself about the CLA bot.
 - The full run drafted a wait note: nothing to post, next check 2026-11-18. I posted nothing and confirmed its two open questions with `gh`: the `cla-bot` check passes and the PR is no longer a draft.
+- Updated the PR description without removing any template text. Under the empty Breaking change heading, I added a note that this is not a breaking change, because YAML is imported automatically and its removal follows the deprecation period (2027.6.0). After the Testing paragraph, I added a collapsed "Before/after and test output" block: `git grep` finds `BTHomeHub5DeviceScanner(DeviceScanner)` on `dev` and nothing on my branch, `git ls-tree` shows the new config flow, coordinator, and test files, and a fresh `pytest` run on `b43c87b8df5` gives 29 passed with 100% statement and branch coverage (171 statements, 18 branches).
 
 **Toolkit**
 
@@ -452,6 +453,7 @@ I used AI Tools as an assistant while writing and testing this. I reviewed the c
 - Inspect the repository's active development fixtures and translation compilers earlier in the process to anticipate translation key test requirements before debugging teardown failures.
 - Before simplifying a step from my validated plan, I will read why the reference implementation does it. Three of my bugs (lost default host, misleading repair notice, clashing entity IDs) came from simplifying something `sky_hub` did for a reason. If I still deviate, write the deviation and what users will experience in the PR's deviation list at that moment, not at the end.
 - Match my local toolchain to CI before the first commit: run `script/setup`, then check the Python version, the ruff version and that `python3 -m script.hassfest` runs. My 3.14.7 venv with ruff 0.17.1 and no `hassfest` let a stale `integrations.json` reach CI.
+- Write tests from the failures a user would hit (missing `host`, unreachable router, the same device seen by two hubs, a failed unload) before looking at coverage. I had 100% statement and branch coverage and still shipped the lost default host and the clashing entity IDs, because those branches ran but no test checked the user-facing result.
 
 ---
 
