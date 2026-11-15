@@ -27,7 +27,23 @@ This project migrated the `bt_home_hub_5` integration in Home Assistant Core fro
    ```python
    async def test_yaml_setup_uses_default_host(hass: HomeAssistant) -> None:
        """Test YAML configuration without a host imports the default address."""
-       ...
+       with (
+           patch(
+               "homeassistant.components.bt_home_hub_5.config_flow.get_devicelist",
+               return_value=DEVICE_1,
+           ),
+           patch(
+               "homeassistant.components.bt_home_hub_5.coordinator.get_devicelist",
+               return_value=DEVICE_1,
+           ),
+       ):
+           assert await async_setup_component(
+               hass,
+               DEVICE_TRACKER_DOMAIN,
+               {DEVICE_TRACKER_DOMAIN: [{CONF_PLATFORM: DOMAIN}]},
+           )
+           await hass.async_block_till_done()
+
        entries = hass.config_entries.async_entries(DOMAIN)
        assert len(entries) == 1
        assert entries[0].data[CONF_HOST] == DEFAULT_HOST
@@ -37,6 +53,7 @@ This project migrated the `bt_home_hub_5` integration in Home Assistant Core fro
    +    {probatio.Optional(CONF_HOST, default=DEFAULT_HOST): cv.string}
    +)
    ```
+   Both excerpts are copied verbatim from the branch. `probatio` is the schema library Home Assistant core now imports in place of `voluptuous as vol`.
 
 5. **2026-11-01: The Failed YAML Import Repair**:
    My initial implementation registered a single unconditional `deprecated_yaml` repair issue that falsely assured users their YAML configuration had been successfully imported, even when the router was unreachable and no config entry was created. To fix this misleading feedback, I restored the conditional error handling pattern in `device_tracker.py`: an ERROR-level `yaml_import_cannot_connect` repair is dispatched only when connection fails, while `deprecated_yaml` is restricted to successful imports. Running pytest showed `3 failed, 15 passed` prior to the fix and `18 passed` afterward.
